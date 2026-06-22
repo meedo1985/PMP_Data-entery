@@ -12,7 +12,6 @@ const helmet         = require('helmet');
 const path           = require('path');
 const fs             = require('fs');
 const os             = require('os');
-const http           = require('http');
 const https          = require('https');
 const crypto         = require('crypto');
 const QRCode         = require('qrcode');
@@ -409,7 +408,7 @@ function createApp() {
   // ----- Backups (manageSettings) — list + create. Restore is desktop-only
   // (it closes/reopens the DB, which is unsafe to do mid-request while serving). -----
   app.get ('/api/sys/backups',     requirePermission('manageSettings'), (req, res) => { try { ok(res, backup.list()); } catch (e) { fail(res, e); } });
-  app.post('/api/sys/backups',     requirePermission('manageSettings'), async (req, res) => { try { ok(res, await backup.create('manual')); } catch (e) { fail(res, e); } });
+  app.post('/api/sys/backups',     requirePermission('manageSettings'), async (req, res) => { try { ok(res, await backup.create()); } catch (e) { fail(res, e); } });
 
   // ================================================================
   // Static files + HTML routing (serves the SAME renderer/ folder)
@@ -477,8 +476,8 @@ function start({ host = '0.0.0.0', port = 3737 } = {}) {
     _useHttps = !!tls;
     const app = createApp();
     const proto = _useHttps ? 'https' : 'http';
-    httpServer = _useHttps ? https.createServer(tls, app) : http.createServer(app);
-    httpServer.listen(port, host, (err) => {
+    // app.listen() returns an http.Server; capture it so stop() can close it.
+    httpServer = (_useHttps ? https.createServer(tls, app) : app).listen(port, host, (err) => {
       if (err) return reject(err);
       console.log(`[server] listening on ${proto}://${host}:${port}`);
       console.log('[server] LAN addresses:');

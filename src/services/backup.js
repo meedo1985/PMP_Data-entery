@@ -21,17 +21,17 @@ function _files() {
     .sort(); // lexicographic == chronological (ISO-ish timestamp)
 }
 
-async function create(reason = 'manual') {
+async function create() {
   const ts = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 19);
   const dest = path.join(backupDir(), `pmp-${ts}.db`);
   await db.get().backup(dest);
   prune();
-  return { ok: true, path: dest, name: path.basename(dest), reason };
+  return { ok: true, path: dest, name: path.basename(dest) };
 }
 
-function prune(keep = KEEP) {
+function prune() {
   const files = _files();
-  while (files.length > keep) {
+  while (files.length > KEEP) {
     try { fs.unlinkSync(path.join(backupDir(), files.shift())); } catch (_) {}
   }
 }
@@ -49,7 +49,7 @@ function list() {
 async function dailyIfNeeded() {
   const today = new Date().toISOString().slice(0, 10);
   if (_files().some(f => f.startsWith('pmp-' + today))) return { ok: true, skipped: true };
-  return create('daily');
+  return create();
 }
 
 function restore(name) {
@@ -58,7 +58,7 @@ function restore(name) {
   const dbPath = global.PMP_PATHS.db;
 
   // Snapshot the current DB first so a bad restore is itself recoverable.
-  return create('pre-restore').then(() => {
+  return create().then(() => {
     db.close();
     fs.copyFileSync(src, dbPath);
     // Drop the live WAL/SHM so the copied file is authoritative, not stale WAL.

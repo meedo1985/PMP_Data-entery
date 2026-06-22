@@ -49,6 +49,9 @@
       banner.textContent = 'You must change your password before continuing. Please use the form below.';
       const pwdSection = document.getElementById('btnChangePwd');
       if (pwdSection && pwdSection.parentNode) pwdSection.parentNode.insertBefore(banner, pwdSection);
+      // Stop here: every other section's loader hits the MUST_CHANGE_PASSWORD gate.
+      // Only the change-password form (wired above) is usable until the pwd is changed.
+      return;
     }
 
     if (isBrowser) {

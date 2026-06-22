@@ -117,7 +117,7 @@ module.exports = ({ ipcMain, requireAuth, requirePermission, getWindow }) => {
   ipcMain.handle('sys:version', async () => app.getVersion());
 
   // ----- Backups (manageSettings) -----
-  ipcMain.handle('sys:backupNow',  requirePermission('manageSettings', async () => backup.create('manual')));
+  ipcMain.handle('sys:backupNow',  requirePermission('manageSettings', async () => backup.create()));
   ipcMain.handle('sys:backupList', requirePermission('manageSettings', async () => backup.list()));
   ipcMain.handle('sys:backupRestore', requirePermission('manageSettings', async (u, name) => {
     const res = await backup.restore(name);
