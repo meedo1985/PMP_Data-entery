@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PMP — Invoices</title>
+<link rel="stylesheet" href="../css/styles.css">
+<style>
+  .inv-layout {
+    display: grid;
+    grid-template-columns: minmax(280px, 320px) 1fr;
+    gap: 18px;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* Left panel */
+  .inv-panel {
+    background: #fff;
+    border-radius: 4px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .inv-panel-header {
+    background: #f4f6f8;
+    padding: 11px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #5a6a7a;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .inv-panel-body { padding: 14px 16px; flex: 1; overflow-y: auto; }
+
+  /* Template zone */
+  .template-drop {
+    border: 2px dashed #d0d9e2;
+    border-radius: 4px;
+    padding: 24px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    margin-bottom: 12px;
+    font-size: 12px;
+    color: #7f8c8d;
+  }
+  .template-drop:hover, .template-drop.drag-over {
+    border-color: #1f9d57;
+    background: #e7f6ec;
+    color: #178a4a;
+  }
+  .template-drop .icon { font-size: 28px; margin-bottom: 6px; }
+  .template-loaded {
+    background: #eafaf1;
+    border: 2px solid #27ae60;
+    border-radius: 4px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: #1e8449;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .template-loaded .tpl-name { flex: 1; font-weight: 600; }
+  .template-loaded .tpl-clear { cursor: pointer; color: #c0392b; font-weight: 700; font-size: 14px; }
+
+  /* Fields reference */
+  .fields-title {
+    font-size: 11px; font-weight: 700; color: #5a6a7a;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    margin: 14px 0 8px;
+  }
+  .field-chip {
+    display: inline-block;
+    background: #f4f6f8;
+    border: 1px solid #e2e8f0;
+    border-radius: 3px;
+    padding: 2px 7px;
+    font-family: Consolas, monospace;
+    font-size: 11px;
+    color: #156a3c;
+    margin: 2px;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .field-chip:hover { background: #e7f6ec; border-color: #b6e2c6; }
+
+  /* Order selector */
+  .order-search-row {
+    display: flex; gap: 8px; margin-bottom: 10px;
+  }
+  .order-search-row input  { flex: 1; }
+  .order-list {
+    border: 1px solid #e2e8f0;
+    border-radius: 3px;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  .order-item {
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0f4f8;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background 0.1s;
+  }
+  .order-item:last-child { border: none; }
+  .order-item:hover { background: #f7fafd; }
+  .order-item.selected { background: #e7f6ec; border-left: 3px solid #178a4a; }
+  .order-item .oi-wo   { font-weight: 600; color: #156a3c; font-family: Consolas, monospace; }
+  .order-item .oi-meta { color: #7f8c8d; margin-top: 2px; }
+
+  /* Preview panel */
+  .preview-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px 14px;
+    margin-bottom: 18px;
+  }
+  .pv-field { font-size: 12px; }
+  .pv-label { color: #7f8c8d; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+  .pv-value { color: #2c3e50; font-weight: 500; min-height: 18px; }
+  .pv-value.mono { font-family: Consolas, monospace; color: #156a3c; }
+
+  .generate-bar {
+    display: flex; gap: 10px; align-items: center;
+    padding: 14px 18px;
+    background: #f4f6f8;
+    border-top: 1px solid #e2e8f0;
+    flex-shrink: 0;
+  }
+  .generate-bar .spacer { flex: 1; }
+
+  .inv-empty {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; height: 100%;
+    color: #95a5a6; font-size: 13px; gap: 10px;
+  }
+  .inv-empty .big-icon { font-size: 48px; opacity: 0.3; }
+
+  /* Instructions box */
+  .how-to {
+    background: #e7f6ec;
+    border: 1px solid #b6e2c6;
+    border-radius: 3px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: #156a3c;
+    margin-bottom: 14px;
+    line-height: 1.6;
+  }
+  .how-to strong { display: block; margin-bottom: 4px; }
+</style>
+</head>
+<body class="page-body">
+
+<header id="appHeader"></header>
+
+<div class="main">
+  <button class="back-btn" id="btnBack">← Dashboard</button>
+
+  <div class="inv-layout">
+
+    <!-- LEFT: Template + Fields reference -->
+    <div style="display:flex;flex-direction:column;gap:14px">
+
+      <!-- SINGLE ORDER INVOICE (Template) -->
+      <div class="inv-panel">
+        <div class="inv-panel-header">📄 Single-Order Invoice (Word Template)</div>
+        <div class="inv-panel-body">
+
+          <div class="how-to" id="howToWord" style="padding:0">
+            <button id="howToWordToggle" style="display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:none;cursor:pointer;padding:10px 14px;font-family:inherit;font-size:12px;color:#156a3c;font-weight:600;text-align:left">
+              <span>How it works</span>
+              <span id="howToWordArrow" style="font-size:11px;color:#7f8c8d">▲</span>
+            </button>
+            <div id="howToWordBody" style="padding:0 14px 10px;font-size:12px;color:#156a3c;line-height:1.6">
+              Create a Word (.docx) document with <code style="font-family:Consolas;background:#d4e8f8;padding:1px 4px">{{field_name}}</code>
+              placeholders anywhere in the document. Upload it here, select an order,
+              and PMP will generate a filled copy automatically.
+            </div>
+          </div>
+
+          <!-- Drop zone / loaded template -->
+          <div id="templateDrop" class="template-drop">
+            <div class="icon">📂</div>
+            <div>Click to select a <strong>.docx</strong> template</div>
+            <div style="margin-top:4px;font-size:11px;color:#b2bec3">or drag & drop here</div>
+          </div>
+          <div id="templateLoaded" class="template-loaded" style="display:none">
+            <span>✅</span>
+            <span class="tpl-name" id="tplName">—</span>
+            <span class="tpl-clear" id="tplClear" role="button" tabindex="0" title="Remove template" aria-label="Remove template">✕</span>
+          </div>
+          <input type="file" id="templateFile" accept=".docx" style="display:none">
+
+          <!-- Available fields reference -->
+          <div class="fields-title">Available Placeholders — click to copy</div>
+          <div id="fieldChips"></div>
+        </div>
+      </div>
+
+      <!-- CLIENT INVOICE -->
+      <div class="inv-panel" style="margin-top:14px">
+        <div class="inv-panel-header">📊 Client Invoice</div>
+        <div class="inv-panel-body">
+
+          <div class="how-to" id="howToClient" style="padding:0;background:#eafaf1;border-color:#a3e4c0">
+            <button id="howToClientToggle" style="display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:none;cursor:pointer;padding:10px 14px;font-family:inherit;font-size:12px;color:#1e8449;font-weight:600;text-align:left">
+              <span>Generate a formal client invoice</span>
+              <span id="howToClientArrow" style="font-size:11px;color:#7f8c8d">▲</span>
+            </button>
+            <div id="howToClientBody" style="padding:0 14px 10px;font-size:12px;color:#1e8449;line-height:1.6">
+              Select a client and date range, preview the orders, then generate a
+              professional Excel invoice with company header, orders table, totals,
+              and signature area.
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <select class="field-select" id="ciClient" style="height:34px;font-size:12px">
+              <option value="">— Select Client —</option>
+            </select>
+
+            <div id="ciGroupBox" style="display:none;font-size:11px;color:#5a6a7a;padding:4px 8px;background:#f4f6f8;border-radius:3px">
+              Group / Channel: <strong id="ciGroup">—</strong>
+            </div>
+
+            <div style="display:flex;gap:8px">
+              <input class="field-input" id="ciFrom" type="date" style="flex:1;height:34px;font-size:12px" placeholder="From date">
+              <input class="field-input" id="ciTo" type="date" style="flex:1;height:34px;font-size:12px" placeholder="To date">
+            </div>
+
+            <!-- Format selector -->
+            <div style="display:flex;gap:12px;align-items:center;padding:4px 0">
+              <label style="font-size:12px;color:#5a6a7a;font-weight:600">Format:</label>
+              <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer">
+                <input type="radio" name="ciFormat" value="word" checked> 📄 Word
+              </label>
+              <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer">
+                <input type="radio" name="ciFormat" value="excel"> 📊 Excel
+              </label>
+            </div>
+
+            <button class="btn" id="ciPreviewBtn" style="height:34px;font-size:12px;background:#f4f6f8;color:#2c3e50;border:1px solid #d0d9e2">
+              🔍 Preview Orders
+            </button>
+
+            <div id="ciPreviewBox" style="display:none;margin-top:4px">
+              <div style="font-size:11px;color:#5a6a7a;margin-bottom:4px">
+                <span id="ciCount">0</span> orders found
+                <span style="float:right">Total cost: <strong id="ciTotalCost">$0.00</strong></span>
+              </div>
+              <div id="ciOrderList" style="max-height:160px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:3px;font-size:11px"></div>
+            </div>
+
+            <button class="btn btn-primary" id="ciGenerateBtn" style="height:36px;font-size:13px" disabled>
+              📄 Generate Invoice
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: Order selector + Preview + Generate -->
+    <div class="inv-panel">
+      <div class="inv-panel-header">📋 Select Order &amp; Generate</div>
+      <div class="inv-panel-body" style="display:flex;flex-direction:column;gap:0">
+
+        <!-- Order search -->
+        <div class="order-search-row">
+          <input class="field-input" id="orderSearch" aria-label="Search orders by WO, client, or service" placeholder="🔍 Search by WO, client, service..." style="height:32px;font-size:12px">
+          <select class="field-select" id="filterStatus" style="width:130px;height:32px;font-size:12px">
+            <option value="">All statuses</option>
+            <option>Pending</option><option>Approved</option><option>Paid</option><option>Partial</option>
+          </select>
+        </div>
+        <div class="order-list" id="orderList">
+          <div style="padding:20px;text-align:center;color:#95a5a6;font-size:12px">Loading orders...</div>
+        </div>
+
+        <!-- Preview -->
+        <div id="previewSection" style="display:none;margin-top:16px">
+          <div style="font-size:11px;font-weight:700;color:#5a6a7a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #ecf0f1">
+            Order Preview
+          </div>
+          <div class="preview-grid" id="previewGrid"></div>
+        </div>
+
+        <!-- Empty state -->
+        <div id="previewEmpty" class="inv-empty" style="flex:1">
+          <div class="big-icon">📄</div>
+          <div>Select an order from the list above</div>
+          <div style="font-size:11px">Then click Generate to create the invoice</div>
+        </div>
+
+      </div>
+
+      <div class="generate-bar">
+        <div style="font-size:12px;color:#7f8c8d" id="generateStatus">Select a template and an order to generate an invoice.</div>
+        <div class="spacer"></div>
+        <button class="btn btn-primary" id="btnGenerate" disabled>⚡ Generate Invoice</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="../js/http-api.js"></script>
+<script src="../js/perm-matrix.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/invoices.js"></script>
+</body>
+</html>

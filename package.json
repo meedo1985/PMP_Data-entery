@@ -1,0 +1,84 @@
+{
+  "name": "pmp-desktop",
+  "version": "1.0.0",
+  "description": "PMP Data Sheet V1 — Production Management Desktop App",
+  "main": "main.js",
+  "author": "PMP",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "set ELECTRON_RUN_AS_NODE= && electron .",
+    "dev": "set ELECTRON_RUN_AS_NODE= && electron . --dev",
+    "migrate": "set ELECTRON_RUN_AS_NODE= && electron . --migrate",
+    "rebuild": "electron-rebuild -f -w better-sqlite3",
+    "postinstall": "electron-builder install-app-deps",
+    "build": "electron-builder --win --x64",
+    "build:portable": "electron-builder --win portable --x64",
+    "reset-admin": "electron . --reset-admin",
+    "rebuild-sqlite": "electron-rebuild -f -w better-sqlite3"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.3.0",
+    "cookie-parser": "^1.4.7",
+    "docxtemplater": "^3.49.0",
+    "exceljs": "^4.4.0",
+    "express": "^4.21.0",
+    "express-rate-limit": "^7.4.0",
+    "express-session": "^1.18.1",
+    "memorystore": "^1.6.7",
+    "pizzip": "^3.1.7",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^3.6.0",
+    "electron": "^32.3.3",
+    "electron-builder": "^25.0.5"
+  },
+  "build": {
+    "appId": "com.pmp.datasheet",
+    "productName": "PMP Data Record",
+    "asar": true,
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "src/db/schema.sql",
+        "to": "schema.sql"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "PMP Data Record"
+    },
+    "portable": {
+      "artifactName": "PMP-Data-Record-Portable.exe"
+    }
+  },
+  "keywords": []
+}

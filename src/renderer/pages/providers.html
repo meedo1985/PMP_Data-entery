@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PMP — Providers</title>
+<link rel="stylesheet" href="../css/styles.css">
+<style>
+  /* Type badges - only two types */
+  .badge-space    { background:#e8f8f5; color:#148f77; }
+  .badge-location { background:#e7f6ec; color:#156a3c; }
+
+  /* Inline location manager inside modal */
+  .loc-section {
+    margin-top: 16px;
+    border-top: 1px solid #ecf0f1;
+    padding-top: 14px;
+  }
+  .loc-section-title {
+    font-size: 11px; font-weight: 700; color: #5a6a7a;
+    text-transform: uppercase; letter-spacing: 0.6px;
+    margin-bottom: 10px;
+  }
+  .loc-add-row { display: flex; gap: 8px; margin-bottom: 8px; }
+  .loc-add-row input { flex: 1; height: 34px; font-size: 13px; }
+  .loc-add-row button { height: 34px; }
+
+  .loc-tags {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    min-height: 36px;
+    padding: 6px;
+    border: 1px solid #e2e8f0;
+    border-radius: 3px;
+    background: #f9fbfc;
+  }
+  .loc-tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: #fff; border: 1px solid #d0d9e2;
+    border-radius: 20px;
+    padding: 3px 10px 3px 12px;
+    font-size: 12px; color: #34495e;
+    white-space: nowrap;
+  }
+  .loc-tag .rm {
+    cursor: pointer; color: #c0392b; font-size: 14px;
+    line-height: 1; font-weight: 700;
+    padding: 0 2px;
+  }
+  .loc-tag .rm:hover { color: #e74c3c; }
+  .loc-empty {
+    color: #b2bec3; font-size: 12px; font-style: italic;
+    padding: 4px 4px;
+  }
+</style>
+</head>
+<body class="page-body">
+
+<header id="appHeader"></header>
+
+<div class="main">
+  <div class="toolbar">
+    <button class="back-btn" id="btnBack">← Dashboard</button>
+    <div class="grow"></div>
+    <input class="field-input" id="searchBox" aria-label="Search providers by name or location" placeholder="🔍 Search by name or location..." style="width:300px">
+    <button class="btn btn-add" id="btnAdd">＋ Add Provider</button>
+    <button class="btn btn-neutral" id="btnRefresh" title="Refresh" aria-label="Refresh">↻</button>
+  </div>
+
+  <div class="table-wrap" style="flex:1">
+    <div class="table-scroll" style="max-height:none">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Locations / Coverage</th>
+            <th>Notes</th>
+            <th style="width:130px"></th>
+          </tr>
+        </thead>
+        <tbody id="tblBody"></tbody>
+      </table>
+      <div class="no-results" id="noResults" style="display:none">No providers found</div>
+    </div>
+    <div class="refresh-bar">
+      <span id="rowCount">— providers</span>
+      <span class="spacer"></span>
+    </div>
+  </div>
+</div>
+
+<!-- Provider Add/Edit Modal (includes inline location manager) -->
+<div class="modal-backdrop" id="modal">
+  <div class="modal modal-lg" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-header" id="modalTitle">Add Provider</div>
+    <div class="modal-body">
+      <input type="hidden" id="fId">
+
+      <div class="form-grid">
+        <div class="field-wrap" style="grid-column:1/-1">
+          <label class="field-label">Name <span class="req">*</span></label>
+          <input class="field-input" id="fName" maxlength="80" placeholder="Provider name">
+        </div>
+
+        <!-- Only TWO types -->
+        <div class="field-wrap">
+          <label class="field-label">Type <span class="req">*</span></label>
+          <select class="field-select" id="fType">
+            <option value="location">📍 Location Provider &nbsp;(Studio / Crew / SNG / Other)</option>
+            <option value="space">🛰️ Space Provider &nbsp;(Satellite / Uplink)</option>
+          </select>
+        </div>
+
+        <div class="field-wrap">
+          <label class="field-label">Notes</label>
+          <input class="field-input" id="fNotes" maxlength="200" placeholder="Optional notes">
+        </div>
+      </div>
+
+      <!-- Inline Locations Manager -->
+      <div class="loc-section">
+        <div class="loc-section-title">
+          📍 Locations / Cities Covered
+          <span style="font-weight:400;color:#95a5a6;text-transform:none;font-size:10px;margin-left:6px">
+            — shown as a dropdown when this provider is selected in an order
+          </span>
+        </div>
+
+        <div class="loc-add-row">
+          <input class="field-input" id="locInput" aria-label="Add a location"
+            placeholder="Add a location (e.g. Qatar, Cairo, Studio A, Rabat...)">
+          <button class="btn btn-add" id="btnLocAdd">＋ Add</button>
+        </div>
+
+        <div class="loc-tags" id="locTags">
+          <span class="loc-empty">No locations added yet</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-cancel" id="btnCancel">Cancel</button>
+      <button class="btn btn-add" id="btnSave">Save Provider</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/http-api.js"></script>
+<script src="../js/perm-matrix.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/providers.js"></script>
+</body>
+</html>

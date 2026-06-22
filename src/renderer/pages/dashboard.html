@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PMP — Dashboard</title>
+<link rel="stylesheet" href="../css/styles.css">
+</head>
+<body class="page-body">
+
+<header id="appHeader"></header>
+
+<div class="main">
+
+  <div class="toolbar-search">
+    <input class="field-input" type="text" id="searchBoxMobile" aria-label="Search records" placeholder="Search records...">
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi-card blue">
+      <div class="kpi-label">Total Orders</div>
+      <div class="kpi-value" id="kpiTotalJobs">—</div>
+      <div class="kpi-meta">All time</div>
+      <div class="kpi-icon">&#128196;</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">This Month</div>
+      <div class="kpi-value" id="kpiMonthJobs">—</div>
+      <div class="kpi-meta"><span>&#9650;</span> <span id="monthLabel1">—</span></div>
+      <div class="kpi-icon">&#128197;</div>
+    </div>
+    <div class="kpi-card orange" id="cardTotalAmt">
+      <div class="kpi-label">Total Revenue</div>
+      <div class="kpi-value" id="kpiTotalAmt">—</div>
+      <div class="kpi-meta">USD</div>
+      <div class="kpi-icon">&#128184;</div>
+    </div>
+    <div class="kpi-card purple" id="cardMonthAmt">
+      <div class="kpi-label">This Month Revenue</div>
+      <div class="kpi-value" id="kpiMonthAmt">—</div>
+      <div class="kpi-meta"><span id="monthLabel2">—</span></div>
+      <div class="kpi-icon">&#128201;</div>
+    </div>
+  </div>
+
+  <div class="section-header">
+    <div class="section-title">&#128203; &nbsp;Recent Records</div>
+    <div class="section-count" id="rowCount">— records</div>
+  </div>
+
+  <div class="table-wrap">
+    <div class="table-scroll" style="max-height:none">
+      <table id="tblRecent">
+        <thead>
+          <tr>
+            <th>WO</th>
+            <th>Date</th>
+            <th>Client</th>
+            <th>Service</th>
+            <th>Provider</th>
+            <th>Location</th>
+            <th>Start</th>
+            <th>End</th>
+            <th>Duration</th>
+            <th class="col-amount">Amount</th>
+            <th>Status</th>
+            <th class="col-actions"></th>
+          </tr>
+        </thead>
+        <tbody id="tblBody"></tbody>
+      </table>
+      <div class="no-results" id="noResults" style="display:none">No matching records</div>
+    </div>
+    <div class="refresh-bar">
+      <span>Last updated: <span id="lastRefresh">—</span></span>
+      <span class="spacer"></span>
+      <a id="btnLoadMore" style="display:none">&#8595; Load more</a>
+      <a id="btnRefresh">&#8635; Refresh</a>
+    </div>
+  </div>
+
+  <div class="actions actions-primary">
+    <button class="action-btn btn-primary" data-nav="orders_new">&#43; New Order</button>
+  </div>
+
+</div>
+
+<script src="../js/http-api.js"></script>
+<script src="../js/perm-matrix.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PMP — Edit Order</title>
+<link rel="stylesheet" href="../css/styles.css">
+</head>
+<body class="page-body">
+
+<header id="appHeader"></header>
+
+<div class="main">
+  <button class="back-btn" id="btnBack">← Dashboard</button>
+
+  <div class="form-container order-form">
+    <!-- Form body (sections 1–Notes) is injected by orders_form.js -->
+    <div class="submit-bar submit-bar-split">
+      <button class="btn btn-danger" id="btnDelete">Delete</button>
+      <div class="submit-main-actions">
+        <button class="btn btn-warning" id="btnCopy">Copy as New</button>
+        <button class="btn btn-cancel" id="btnBack2">Back</button>
+        <button class="btn btn-primary" id="btnSave">Save Changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal-backdrop" id="deleteModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle">
+    <div class="modal-header" id="deleteModalTitle">Confirm Delete</div>
+    <div class="modal-body">
+      <p style="margin-bottom:10px">Are you sure you want to delete this order?</p>
+      <p style="color:#c0392b;font-size:12px;font-weight:600">This action cannot be undone.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-cancel" id="btnDeleteCancel">Cancel</button>
+      <button class="btn btn-danger" id="btnDeleteConfirm">Delete Order</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/http-api.js"></script>
+<script src="../js/perm-matrix.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/orders_form.js"></script>
+<script>
+  // btnBack2 (Back) must also honour the dirty-flag check — delegate to btnBack
+  document.getElementById('btnBack2').addEventListener('click', () =>
+    document.getElementById('btnBack').click());
+  document.getElementById('btnCopy').addEventListener('click', () => {
+    const place = document.getElementById('fPlace');
+    navWithContext('orders_new', { prefill: {
+      order_date:        new Date().toISOString().slice(0, 10),
+      client_id:         document.getElementById('fClient').value,
+      service:           document.getElementById('fService').value,
+      category:          document.getElementById('fCategory').value,
+      wo_client: '', wo_internal: '',
+      place:             place ? place.value : '',
+      place_ar:          document.getElementById('fPlaceAr') ? document.getElementById('fPlaceAr').value : '',
+      start_time:        document.getElementById('fStart').value,
+      end_time:          document.getElementById('fEnd').value,
+      duration_minutes:  document.getElementById('fDuration').value,
+      duration_seconds:  document.getElementById('fDurationSec') ? document.getElementById('fDurationSec').value : '',
+      bandwidth_mhz:     document.getElementById('fBandwidth').value,
+      provider_id:       document.getElementById('fProvider').value,
+      space_provider_id: document.getElementById('fSpaceProvider').value,
+      reporter:          document.getElementById('fReporter').value,
+      currency:          document.getElementById('fCurrency').value,
+      payment_status:    'Pending', invoice_no: '',
+      notes:             document.getElementById('fNotes').value,
+      live_type:         document.getElementById('fLiveType').value || undefined,
+      crew_type:         document.getElementById('fCrewType').value || undefined,
+      use_special:       document.getElementById('fUseSpecial')?.checked ? 1 : 0,
+      special_price:     document.getElementById('fSpecialPrice')?.value || null
+    }});
+  });
+  document.getElementById('btnDelete').addEventListener('click', async () => {
+    const u = await window.pmp.auth.me();
+    if (!u || !['admin','manager'].includes(u.role)) { toast('Insufficient permissions', 'error'); return; }
+    document.getElementById('deleteModal').classList.add('active');
+  });
+  document.getElementById('btnDeleteCancel').addEventListener('click', () => {
+    document.getElementById('deleteModal').classList.remove('active');
+  });
+  document.getElementById('btnDeleteConfirm').addEventListener('click', async () => {
+    document.getElementById('deleteModal').classList.remove('active');
+    try {
+      const ctx = sessionStorage.getItem('pmp.editingOrderId');
+      if (!ctx) { toast('Order ID not available', 'error'); return; }
+      await window.pmp.orders.remove(Number(ctx));
+      toast('Order deleted', 'success');
+      setTimeout(() => window.pmp.nav.goto('dashboard'), 700);
+    } catch (err) { toast('Delete failed: ' + (err.message || err), 'error'); }
+  });
+  document.addEventListener('DOMContentLoaded', () => {
+    const raw = sessionStorage.getItem('pmp.navContext');
+    if (raw) {
+      try { const ctx = JSON.parse(raw); if (ctx && ctx.id) sessionStorage.setItem('pmp.editingOrderId', String(ctx.id)); } catch (_) {}
+    }
+    window.OrdersForm.init({ mode: 'edit' });
+  });
+</script>
+</body>
+</html>

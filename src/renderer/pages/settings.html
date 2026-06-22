@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PMP — Settings</title>
+<link rel="stylesheet" href="../css/styles.css">
+<style>
+  /* Tab bar reuses the shared .tab-bar / .tab / .tab-content from styles.css */
+
+  /* Services catalog styles */
+  .cat-section { margin-bottom:20px; }
+  .cat-header {
+    display:flex; align-items:center; gap:10px;
+    padding:8px 0; border-bottom:2px solid #ecf0f1; margin-bottom:10px;
+  }
+  .cat-header h4 { font-size:12px; font-weight:700; color:#34495e; text-transform:uppercase; letter-spacing:0.5px; flex:1; }
+  .cat-add-row { display:flex; gap:8px; margin-bottom:8px; }
+  .cat-add-row input { flex:1; height:32px; font-size:12px; }
+  .service-tags { display:flex; flex-wrap:wrap; gap:6px; }
+  .service-tag {
+    display:inline-flex; align-items:center; gap:4px;
+    background:#f4f6f8; border:1px solid #e2e8f0; border-radius:3px;
+    padding:3px 8px; font-size:12px; color:#34495e;
+  }
+  .service-tag .del-tag {
+    cursor:pointer; color:#c0392b; font-weight:700; font-size:13px;
+    line-height:1; padding:0 2px;
+  }
+  .service-tag .del-tag:hover { color:#e74c3c; }
+</style>
+</head>
+<body class="page-body">
+
+<header id="appHeader"></header>
+
+<div class="main">
+  <button class="back-btn" id="btnBack">← Dashboard</button>
+
+  <div id="browserNotice" class="notice-info" style="display:none;margin-bottom:14px">
+    ℹ️ You are using the browser version. Network settings can only be managed from the host machine.
+  </div>
+
+  <!-- Tab bar -->
+  <div class="tab-bar">
+    <button class="tab active" data-tab="general"><span aria-hidden="true">⚙️</span> General</button>
+    <button class="tab" data-tab="users"><span aria-hidden="true">👥</span> Users</button>
+    <button class="tab" data-tab="services"><span aria-hidden="true">🗂️</span> Services Catalog</button>
+    <button class="tab" data-tab="import"><span aria-hidden="true">📥</span> Import / Audit</button>
+    <button class="tab pmp-hidden" data-tab="company" id="stabBtnCompany"><span aria-hidden="true">🏢</span> Company</button>
+  </div>
+
+  <!-- TAB: General -->
+  <div class="tab-content active" id="stab-general">
+    <div class="settings-grid">
+
+      <div class="card-box" id="cardLan">
+        <h3>🌐 LAN Access</h3>
+        <div class="row">
+          <div class="row-label">Status:</div>
+          <div class="row-value">
+            <span class="status-dot" id="lanDot"></span>
+            <span id="lanStatusText">—</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="row-label">Port:</div>
+          <div class="row-value">
+            <input type="number" class="field-input" id="lanPort" style="width:120px;height:32px" min="1024" max="65535">
+          </div>
+        </div>
+        <div class="row" style="flex-direction:column;align-items:stretch">
+          <div class="row-label" style="margin-bottom:6px">Access from another device:</div>
+          <div class="ip-list" id="lanIps">—</div>
+        </div>
+        <div class="row" id="qrRow" style="display:none;flex-direction:column;align-items:center;margin-top:12px">
+          <div class="row-label" style="margin-bottom:6px">Scan with phone:</div>
+          <img id="qrImage" src="" alt="QR Code" style="width:180px;height:180px;border:1px solid #e2e8f0;border-radius:4px;padding:4px;background:#fff">
+          <div style="font-size:11px;color:#95a5a6;margin-top:4px">Open camera app and point at the code</div>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:8px">
+          <button class="btn btn-save" id="btnSavePort">Save Port</button>
+          <button class="btn" id="btnToggleLan">—</button>
+        </div>
+        <div class="warning">
+          ⚠️ When enabled, Windows Firewall may ask to allow access — click "Allow".
+        </div>
+      </div>
+
+      <div class="card-box">
+        <h3>🔐 Change Password</h3>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="field-wrap">
+            <label class="field-label">Current Password</label>
+            <input type="password" class="field-input" id="oldPwd">
+          </div>
+          <div class="field-wrap">
+            <label class="field-label">New Password</label>
+            <input type="password" class="field-input" id="newPwd">
+          </div>
+          <div class="field-wrap">
+            <label class="field-label">Confirm Password</label>
+            <input type="password" class="field-input" id="newPwd2">
+          </div>
+          <div><button class="btn btn-save" id="btnChangePwd">Change Password</button></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TAB: Users -->
+  <div class="tab-content" id="stab-users">
+    <div style="max-width:940px">
+
+      <!-- My Account — shown for non-admin users only -->
+      <div class="card-box" id="cardMyAccount" style="display:none;max-width:480px;margin-bottom:16px">
+        <h3 style="margin:0 0 16px">👤 My Account</h3>
+        <div class="field-wrap">
+          <label class="field-label">Username</label>
+          <input type="text" class="field-input" id="myUsername" readonly style="background:#f4f6f8;color:#7f8c8d;cursor:default">
+        </div>
+        <div class="field-wrap">
+          <label class="field-label">Full Name</label>
+          <input type="text" class="field-input" id="myFullName" placeholder="Your full name...">
+        </div>
+        <div style="margin-bottom:18px"><button class="btn btn-save" id="btnSaveProfile">Save Name</button></div>
+
+        <hr style="border:none;border-top:1px solid #e2e8f0;margin:0 0 16px">
+        <h4 style="font-size:13px;font-weight:700;color:#34495e;margin:0 0 12px">Change Password</h4>
+        <div class="field-wrap">
+          <label class="field-label">Current Password</label>
+          <input type="password" class="field-input" id="myOldPwd">
+        </div>
+        <div class="field-wrap">
+          <label class="field-label">New Password</label>
+          <input type="password" class="field-input" id="myNewPwd">
+        </div>
+        <div class="field-wrap">
+          <label class="field-label">Confirm Password</label>
+          <input type="password" class="field-input" id="myNewPwd2">
+        </div>
+        <div><button class="btn btn-save" id="btnChangePwdAccount">Change Password</button></div>
+      </div>
+
+      <!-- Permissions reference (admin only) -->
+      <div class="card-box" id="cardPermRef" style="margin-bottom:16px">
+        <h3 style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;margin:0 0 14px" id="permToggle">
+          🔐 Role Permissions Reference
+          <span id="permArrow" style="font-size:11px;color:#95a5a6;font-weight:400">▲ hide</span>
+        </h3>
+        <div id="permTableWrap">
+          <table style="width:100%;border-collapse:collapse;font-size:11px">
+            <thead>
+              <tr style="background:#f4f6f8">
+                <th style="padding:7px 10px;text-align:left;font-weight:600;color:#34495e;border-bottom:2px solid #e2e8f0">Permission</th>
+                <th style="padding:7px 8px;text-align:center;color:#0d5a37;border-bottom:2px solid #e2e8f0">Admin</th>
+                <th style="padding:7px 8px;text-align:center;color:#148f77;border-bottom:2px solid #e2e8f0">Manager</th>
+                <th style="padding:7px 8px;text-align:center;color:#d97706;border-bottom:2px solid #e2e8f0">Coordination</th>
+                <th style="padding:7px 8px;text-align:center;color:#7c3aed;border-bottom:2px solid #e2e8f0">Accountant</th>
+                <th style="padding:7px 8px;text-align:center;color:#6b7280;border-bottom:2px solid #e2e8f0">User</th>
+              </tr>
+            </thead>
+            <tbody id="permTbody">
+              <!-- Rows injected by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Users list -->
+      <div class="card-box" id="cardUsers">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <h3 style="margin:0">👥 User Accounts</h3>
+          <button class="btn btn-save" id="btnAddUser" style="display:none">+ Add User</button>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead>
+            <tr style="border-bottom:2px solid #e2e8f0;text-align:left">
+              <th style="padding:6px 10px;color:#7f8c8d;font-weight:600">#</th>
+              <th style="padding:6px 10px;color:#7f8c8d;font-weight:600">Full Name</th>
+              <th style="padding:6px 10px;color:#7f8c8d;font-weight:600">Username</th>
+              <th style="padding:6px 10px;color:#7f8c8d;font-weight:600">Role</th>
+              <th style="padding:6px 10px;color:#7f8c8d;font-weight:600">Status</th>
+              <th style="padding:6px 10px;color:#7f8c8d;font-weight:600">Last Login</th>
+              <th style="padding:6px 10px;color:#7f8c8d;font-weight:600"></th>
+            </tr>
+          </thead>
+          <tbody id="usersTblBody"></tbody>
+        </table>
+        <div id="usersEmpty" style="display:none;color:#95a5a6;font-size:12px;padding:20px 0;text-align:center">No users</div>
+      </div>
+    </div>
+
+    <!-- Add / Edit User Modal -->
+    <div id="userModal" class="modal-backdrop">
+      <div class="modal" style="width:460px;padding:26px 28px">
+        <h3 style="margin:0 0 18px;font-size:14px;color:#0d5a37" id="userModalTitle">Add User</h3>
+        <input type="hidden" id="uId">
+
+        <div class="field-wrap">
+          <label class="field-label">Full Name</label>
+          <input type="text" class="field-input" id="uName" placeholder="Full name...">
+        </div>
+        <div class="field-wrap">
+          <label class="field-label">Username *</label>
+          <input type="text" class="field-input" id="uUsername" placeholder="Username (unique)...">
+        </div>
+        <div class="field-wrap">
+          <label class="field-label">Role *</label>
+          <select class="field-select" id="uRole">
+            <option value="admin">Admin — Full access</option>
+            <option value="manager">Manager — Operations</option>
+            <option value="coordination">Coordination — No financials</option>
+            <option value="accountant">Accountant — Payments only</option>
+            <option value="user">User — View &amp; create orders</option>
+          </select>
+        </div>
+
+        <!-- New user: plain password field -->
+        <div class="field-wrap" id="uPwdWrap">
+          <label class="field-label">Password *</label>
+          <input type="password" class="field-input" id="uPwd" placeholder="Password...">
+        </div>
+        <!-- Edit user: optional reset -->
+        <div class="field-wrap" id="uResetWrap" style="display:none">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:#34495e">
+            <input type="checkbox" id="uResetChk"> Reset password
+          </label>
+          <input type="password" class="field-input" id="uNewPwd" placeholder="New password..."
+                 style="margin-top:6px;display:none">
+        </div>
+
+        <div class="field-wrap">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:#34495e">
+            <input type="checkbox" id="uActive" checked> Active (can log in)
+          </label>
+        </div>
+
+        <!-- Permissions section (admin only) -->
+        <div id="uPermWrap" style="display:none;margin-top:14px">
+          <div style="font-size:11px;font-weight:700;color:#5a6a7a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Custom Permissions</div>
+          <div style="font-size:11px;color:#95a5a6;margin-bottom:8px">Leave unchecked to use role defaults</div>
+          <div id="uPermGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px">
+            <!-- Injected by JS -->
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:18px">
+          <button class="btn btn-save" id="btnSaveUser">Save</button>
+          <button class="btn" id="btnCancelUser">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: Services Catalog -->
+  <div class="tab-content" id="stab-services">
+    <div class="card-box" style="max-width:800px">
+      <h3>🗂️ Services Catalog</h3>
+      <p style="font-size:12px;color:#5a6a7a;margin-bottom:16px">
+        Manage the services available in each category. These appear as the dropdown options in the order form.
+      </p>
+      <div id="catalogContainer">
+        <div class="skeleton" style="height:18px;margin-bottom:10px;width:60%"></div>
+        <div class="skeleton" style="height:18px;margin-bottom:10px;width:80%"></div>
+        <div class="skeleton" style="height:18px;margin-bottom:10px;width:50%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: Company Settings -->
+  <div class="tab-content" id="stab-company">
+    <div class="card-box" style="max-width:600px">
+      <h3>🏢 Company Information</h3>
+      <p style="font-size:12px;color:#5a6a7a;margin-bottom:16px">
+        This information appears in generated invoices and documents.
+      </p>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="field-wrap">
+          <label class="field-label" for="cName">Company Name</label>
+          <input type="text" class="field-input" id="cName" maxlength="120">
+        </div>
+        <div class="field-wrap">
+          <label class="field-label" for="cDept">Department Name</label>
+          <input type="text" class="field-input" id="cDept" maxlength="120">
+        </div>
+        <div class="field-wrap">
+          <label class="field-label" for="cAddress">Address</label>
+          <textarea class="field-textarea" id="cAddress" rows="2" maxlength="300"></textarea>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="field-wrap">
+            <label class="field-label" for="cPhone">Phone</label>
+            <input type="text" class="field-input" id="cPhone" maxlength="60">
+          </div>
+          <div class="field-wrap">
+            <label class="field-label" for="cEmail">Email</label>
+            <input type="email" class="field-input" id="cEmail" maxlength="120">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="field-wrap">
+            <label class="field-label" for="cMgrName">Manager Name</label>
+            <input type="text" class="field-input" id="cMgrName" maxlength="100">
+          </div>
+          <div class="field-wrap">
+            <label class="field-label" for="cMgrTitle">Manager Title</label>
+            <input type="text" class="field-input" id="cMgrTitle" maxlength="100">
+          </div>
+        </div>
+        <div>
+          <button class="btn btn-save" id="btnSaveCompany">Save Company Info</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: Import / Audit -->
+  <div class="tab-content" id="stab-import">
+    <div class="settings-grid">
+
+      <div class="card-box" id="cardImport" style="grid-column:1/-1">
+        <h3>📥 Import Data from Excel</h3>
+        <p style="font-size:12px;color:#5a6a7a;margin-bottom:12px">
+          Select the legacy <code>PMP_Data_Sheet_V1.xlsm</code> file to automatically migrate all clients, providers, and orders.
+          <br>The import is safe — it will not delete existing data and ignores duplicate records.
+        </p>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-save" id="btnImport">Select Excel File &amp; Import</button>
+          <button class="btn" id="btnCleanDuplicates" style="background:#e74c3c;color:#fff;border:none" title="Find and delete duplicate orders with same Date + Client + Service + Start Time">🗑 Remove Duplicate Orders</button>
+        </div>
+        <div id="importReport" style="display:none;margin-top:16px;padding:14px;background:#f4f6f8;border-radius:3px;font-size:12px;max-height:400px;overflow-y:auto"></div>
+      </div>
+
+      <div class="card-box" id="cardAudit" style="grid-column:1/-1">
+        <h3>📋 Audit Log</h3>
+        <p style="font-size:12px;color:#5a6a7a;margin-bottom:10px">Last 50 system operations</p>
+        <div id="auditLog" style="font-family:Consolas,monospace;font-size:11px;line-height:1.6;max-height:300px;overflow-y:auto;background:#f4f6f8;padding:10px;border-radius:3px">Loading...</div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script src="../js/http-api.js"></script>
+<script src="../js/perm-matrix.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/settings.js"></script>
+</body>
+</html>

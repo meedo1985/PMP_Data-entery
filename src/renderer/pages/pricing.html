@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PMP — Pricing</title>
+<link rel="stylesheet" href="../css/styles.css">
+<style>
+  /* .inline-form / .price-row live in styles.css (pricing is their only consumer) */
+  .inline-form > div { min-width: 0; }
+  .cat { font-size: 11px; font-weight: 700; color: #5a6a7a; text-transform: uppercase; }
+  .type-tag { font-size: 10px; background: #eef2f7; padding: 2px 8px; border-radius: 4px; color: #5a6a7a; text-transform: uppercase; }
+</style>
+</head>
+<body class="page-body">
+
+<header id="appHeader"></header>
+
+<div class="main">
+  <button class="back-btn" id="btnBack">← Dashboard</button>
+
+  <div class="tab-bar">
+    <button class="tab active" data-tab="default">Default Rates</button>
+    <button class="tab" data-tab="client">Client Rates</button>
+    <button class="tab" data-tab="provider">Provider Costs</button>
+  </div>
+
+  <!-- TAB: Defaults -->
+  <div class="tab-content active" id="tab-default">
+    <p style="font-size:12px;color:#5a6a7a;margin-bottom:12px">
+      Set the default rate for each service and pricing type.<br>
+      <strong>Live:</strong> <em>base15</em> = first 15 min, <em>per5</em> = each extra 5 min, <em>flat30</em> / <em>flat60</em> = flat price, <em>special</em> = special override.<br>
+      <strong>Crew:</strong> <em>full_day</em> = 8h flat, <em>half_day</em> = 4h flat, <em>special</em> = special override.<br>
+      <strong>Space:</strong> per-minute rate × duration. <strong>Package:</strong> flat fee per service.
+    </p>
+    <div class="inline-form">
+      <div>
+        <div class="field-label">Category</div>
+        <select id="defCat">
+          <option value="live">Live</option>
+          <option value="space">Space</option>
+          <option value="crew">Crew</option>
+          <option value="package">Package</option>
+        </select>
+      </div>
+      <div>
+        <div class="field-label">Type</div>
+        <select id="defType">
+          <option value="base15">Base 15 min</option>
+          <option value="per5">Per 5 min</option>
+          <option value="flat30">Flat 30 min</option>
+          <option value="flat60">Flat 60 min</option>
+          <option value="special">Special</option>
+        </select>
+      </div>
+      <div>
+        <div class="field-label">Service</div>
+        <select id="defService"></select>
+      </div>
+      <div>
+        <div class="field-label" id="defPriceLabel">Price (USD)</div>
+        <input type="number" id="defPrice" step="0.01" min="0" placeholder="0.00">
+      </div>
+      <button class="btn btn-success" id="btnAddDef">Save</button>
+    </div>
+    <div class="table-wrap">
+      <div class="price-row" style="background:#f4f6f8;font-size:11px;font-weight:700;color:#5a6a7a;text-transform:uppercase">
+        <div>Category</div><div>Type</div><div>Service</div><div>Price</div><div></div>
+      </div>
+      <div id="defList"></div>
+    </div>
+  </div>
+
+  <!-- TAB: Client rates -->
+  <div class="tab-content" id="tab-client">
+    <div class="selector-row">
+      <label class="field-label">Select Client:</label>
+      <select class="field-select" id="clientSel" style="flex:1;max-width:300px"></select>
+    </div>
+    <div id="clientSection" style="display:none">
+      <p style="font-size:12px;color:#5a6a7a;margin:8px 0 12px">
+        Custom rates override default rates for this client only.
+      </p>
+      <div class="inline-form">
+        <div>
+          <div class="field-label">Category</div>
+          <select id="cliCat">
+            <option value="live">Live</option>
+            <option value="space">Space</option>
+            <option value="crew">Crew</option>
+            <option value="package">Package</option>
+          </select>
+        </div>
+        <div>
+          <div class="field-label">Type</div>
+          <select id="cliType">
+            <option value="base15">Base 15 min</option>
+            <option value="per5">Per 5 min</option>
+            <option value="flat30">Flat 30 min</option>
+            <option value="flat60">Flat 60 min</option>
+            <option value="special">Special</option>
+          </select>
+        </div>
+        <div><div class="field-label">Service</div><select id="cliService"></select></div>
+        <div><div class="field-label" id="cliPriceLabel">Price (USD)</div><input type="number" id="cliPrice" step="0.01" min="0" placeholder="0.00"></div>
+        <button class="btn btn-success" id="btnAddCli">Save</button>
+      </div>
+      <div class="table-wrap">
+        <div class="price-row" style="background:#f4f6f8;font-size:11px;font-weight:700;color:#5a6a7a;text-transform:uppercase">
+          <div>Category</div><div>Type</div><div>Service</div><div>Price</div><div></div>
+        </div>
+        <div id="cliList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: Provider costs -->
+  <div class="tab-content" id="tab-provider">
+    <div class="selector-row">
+      <label class="field-label">Select Provider:</label>
+      <select class="field-select" id="providerSel" style="flex:1;max-width:300px"></select>
+    </div>
+    <div id="providerSection" style="display:none">
+      <p style="font-size:12px;color:#5a6a7a;margin:8px 0 12px">
+        Provider costs are deducted from revenue to calculate profit.
+      </p>
+      <div class="inline-form">
+        <div>
+          <div class="field-label">Category</div>
+          <select id="prvCat">
+            <option value="live">Live</option>
+            <option value="space">Space</option>
+            <option value="crew">Crew</option>
+            <option value="package">Package</option>
+          </select>
+        </div>
+        <div>
+          <div class="field-label">Type</div>
+          <select id="prvType">
+            <option value="base15">Base 15 min</option>
+            <option value="per5">Per 5 min</option>
+            <option value="flat30">Flat 30 min</option>
+            <option value="flat60">Flat 60 min</option>
+            <option value="special">Special</option>
+          </select>
+        </div>
+        <div><div class="field-label">Service</div><select id="prvService"></select></div>
+        <div><div class="field-label" id="prvPriceLabel">Cost (USD)</div><input type="number" id="prvPrice" step="0.01" min="0" placeholder="0.00"></div>
+        <button class="btn btn-success" id="btnAddPrv">Save</button>
+      </div>
+      <div class="table-wrap">
+        <div class="price-row" style="background:#f4f6f8;font-size:11px;font-weight:700;color:#5a6a7a;text-transform:uppercase">
+          <div>Category</div><div>Type</div><div>Service</div><div>Cost</div><div></div>
+        </div>
+        <div id="prvList"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="../js/http-api.js"></script>
+<script src="../js/perm-matrix.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/pricing.js"></script>
+</body>
+</html>

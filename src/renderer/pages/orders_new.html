@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PMP — New Order</title>
+<link rel="stylesheet" href="../css/styles.css">
+</head>
+<body class="page-body">
+
+<header id="appHeader"></header>
+
+<div class="main">
+  <button class="back-btn" id="btnBack">← Dashboard</button>
+
+  <div class="form-container order-form">
+    <!-- Form body (sections 1–Notes) is injected by orders_form.js -->
+    <div class="submit-bar">
+      <button class="btn btn-cancel" id="btnBack2">Cancel</button>
+      <button class="btn btn-add" id="btnSaveNew">Save + New</button>
+      <button class="btn btn-primary" id="btnSave">Save Order</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/http-api.js"></script>
+<script src="../js/perm-matrix.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/orders_form.js"></script>
+<script>
+  // btnBack2 (Cancel) must also honour the dirty-flag check — delegate to btnBack
+  document.getElementById('btnBack2').addEventListener('click', () =>
+    document.getElementById('btnBack').click());
+  document.addEventListener('DOMContentLoaded', () => window.OrdersForm.init({ mode: 'new' }));
+</script>
+</body>
+</html>

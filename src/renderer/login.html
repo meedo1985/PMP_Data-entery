@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PMP Login</title>
+<style>
+  /* ================================================================
+     Brand palette (sampled from the PMP logo)
+     Green  #00A040   ·  Green dark #00802F   ·  Gray #909090
+     ================================================================ */
+  :root {
+    --pmp-green:      #00a040;
+    --pmp-green-dark: #007a30;
+    --pmp-green-deep: #044a24;
+    --pmp-gray:       #909090;
+    --pmp-ink:        #2b3a33;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    /* uniform soft green — identical at the top and bottom of the frame */
+    background: #4f936e;
+    position: relative;
+    overflow: hidden;
+  }
+  /* gentle centered glow — symmetric, so top and bottom stay even */
+  body::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(900px 900px at 50% 50%, rgba(255,255,255,0.10), transparent 65%);
+    pointer-events: none;
+  }
+
+  .card {
+    position: relative;
+    background: #fff; width: 410px;
+    border-radius: 14px; overflow: hidden;
+    box-shadow: 0 24px 70px rgba(0,0,0,0.45), 0 2px 0 rgba(255,255,255,0.04);
+    animation: cardIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  /* green accent bar at the very top of the card */
+  .card::before {
+    content: '';
+    display: block; height: 5px;
+    background: linear-gradient(90deg, var(--pmp-green) 0%, var(--pmp-green-dark) 70%, var(--pmp-gray) 100%);
+  }
+
+  .card-header {
+    padding: 30px 36px 22px;
+    text-align: center;
+    background: linear-gradient(180deg, #ffffff 0%, #f4f8f5 100%);
+    border-bottom: 1px solid #e9efe9;
+  }
+  .logo-img {
+    width: 200px; max-width: 70%;
+    height: auto; display: block; margin: 0 auto 14px;
+    user-select: none; -webkit-user-drag: none;
+  }
+  .app-title {
+    font-size: 19px; font-weight: 700; color: var(--pmp-green-deep);
+    letter-spacing: 0.3px; margin-bottom: 5px;
+  }
+  .app-sub {
+    font-size: 10.5px; color: var(--pmp-gray);
+    letter-spacing: 1.6px; text-transform: uppercase;
+  }
+
+  .card-body { padding: 26px 36px 22px; }
+  .field-wrap { margin-bottom: 16px; }
+  .field-label {
+    display: block; font-size: 11px; font-weight: 600;
+    color: #5a6a60; text-transform: uppercase;
+    letter-spacing: 0.8px; margin-bottom: 6px;
+  }
+  .field-input {
+    width: 100%; height: 44px;
+    border: 1px solid #d6ded8; border-radius: 7px;
+    padding: 0 14px;
+    font-size: 14px;
+    color: var(--pmp-ink); background: #f7faf8;
+    outline: none;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  }
+  .field-input:focus {
+    border-color: var(--pmp-green);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(0,160,64,0.14);
+  }
+  #errMsg {
+    display: none;
+    background: #fdf2f2; border: 1px solid #f5c6c6;
+    border-radius: 7px; padding: 10px 14px;
+    margin-bottom: 16px;
+    font-size: 13px; color: #c0392b;
+  }
+  .btn-login {
+    width: 100%; height: 46px;
+    background: linear-gradient(135deg, var(--pmp-green) 0%, var(--pmp-green-dark) 100%);
+    border: none; border-radius: 8px;
+    color: #fff; font-size: 14.5px; font-weight: 600;
+    letter-spacing: 0.4px;
+    cursor: pointer; margin-top: 6px;
+    box-shadow: 0 6px 16px rgba(0,160,64,0.28);
+    transition: filter 0.15s, transform 0.05s, box-shadow 0.15s;
+  }
+  .btn-login:hover    { filter: brightness(1.06); box-shadow: 0 8px 20px rgba(0,160,64,0.34); }
+  .btn-login:active   { transform: translateY(1px); }
+  .btn-login:disabled { background: #9cc7ac; box-shadow: none; cursor: default; }
+
+  .card-footer {
+    padding: 13px 36px;
+    background: #fafcfb;
+    border-top: 1px solid #eef3ef;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .footer-text { font-size: 11px; color: #9aa69e; }
+
+  /* Mobile — card fills the screen, inputs stay at 16px to prevent iOS zoom */
+  @media (max-width: 480px) {
+    html, body { align-items: flex-start; }
+    .card { width: 100%; border-radius: 0; box-shadow: none; min-height: 100vh; }
+    .card-header { padding: 34px 24px 22px; }
+    .card-body   { padding: 22px 24px 18px; }
+    .card-footer { padding: 12px 24px; }
+    .logo-img    { width: 220px; }
+    .field-input { font-size: 16px; height: 50px; }
+    .btn-login   { height: 52px; font-size: 16px; margin-top: 8px; }
+  }
+
+  /* Accessibility — honor reduced-motion preference */
+  @media (prefers-reduced-motion: reduce) {
+    .card { animation: none; }
+    .field-input, .btn-login { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="card-header">
+    <img class="logo-img" src="img/logo.png" alt="Palestine Media Production logo">
+    <div class="app-title">PMP Data Record</div>
+    <div class="app-sub">External Services System</div>
+  </div>
+
+  <div class="card-body">
+    <div id="errMsg">&#10007; &nbsp;<span id="errText">Invalid username or password</span></div>
+
+    <div class="field-wrap">
+      <label class="field-label" for="txtUser">Username</label>
+      <input class="field-input" type="text" id="txtUser" placeholder="Enter username" autofocus autocomplete="username">
+    </div>
+
+    <div class="field-wrap">
+      <label class="field-label" for="txtPass">Password</label>
+      <input class="field-input" type="password" id="txtPass" placeholder="Enter password" autocomplete="current-password">
+    </div>
+
+    <button class="btn-login" id="btnLogin">Sign In</button>
+  </div>
+
+  <div class="card-footer">
+    <span class="footer-text">v1.0 &nbsp;&#183;&nbsp; 2026</span>
+    <span class="footer-text">PMP &copy; All rights reserved</span>
+  </div>
+</div>
+
+<script src="js/http-api.js"></script>
+<script src="js/perm-matrix.js"></script>
+<script src="js/api.js"></script>
+<script src="js/login.js"></script>
+</body>
+</html>

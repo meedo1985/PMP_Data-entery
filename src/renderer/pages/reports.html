@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PMP — Reports</title>
+<link rel="stylesheet" href="../css/styles.css">
+</head>
+<body class="page-body">
+
+<header id="appHeader"></header>
+
+<div class="main">
+  <button class="back-btn" id="btnBack">← Dashboard</button>
+
+  <div class="filter-box">
+    <div class="filter-grid">
+      <div class="field-wrap">
+        <label class="field-label">From Date</label>
+        <input class="field-input" type="date" id="fFrom">
+      </div>
+      <div class="field-wrap">
+        <label class="field-label">To Date</label>
+        <input class="field-input" type="date" id="fTo">
+      </div>
+      <div class="field-wrap" style="grid-column:span 2">
+        <label class="field-label">Client(s)</label>
+        <select class="field-select" id="fClient" multiple size="4"></select>
+        <span class="text-muted" style="font-size:11px;margin-top:3px">Leave empty for all clients · Ctrl/Cmd-click to pick several</span>
+      </div>
+      <div class="field-wrap">
+        <label class="field-label">Provider</label>
+        <select class="field-select" id="fProvider"><option value="">— All —</option></select>
+      </div>
+      <div class="field-wrap">
+        <label class="field-label">Category</label>
+        <select class="field-select" id="fCategory">
+          <option value="">— All —</option>
+          <option value="live">Live</option>
+          <option value="package">Package</option>
+          <option value="space">Space</option>
+          <option value="crew">Crew</option>
+        </select>
+      </div>
+      <div class="field-wrap">
+        <label class="field-label">Status</label>
+        <select class="field-select" id="fStatus">
+          <option value="">— All —</option>
+          <option>Pending</option>
+          <option>Approved</option>
+          <option>Paid</option>
+          <option>Partial</option>
+        </select>
+      </div>
+      <div class="field-wrap" style="grid-column:span 2">
+        <label class="field-label">Text Search</label>
+        <input class="field-input" id="fSearch" placeholder="WO / service / location / reporter...">
+      </div>
+    </div>
+    <div class="filter-actions">
+      <button class="btn btn-apply" id="btnApply">🔍 Apply</button>
+      <button class="btn btn-clear" id="btnClear">Clear Filters</button>
+      <div style="flex:1"></div>
+      <button class="btn btn-export" id="btnExport">📥 Export Excel</button>
+    </div>
+  </div>
+
+  <div id="staleNotice" class="warning" style="display:none;margin:0 0 12px">
+    ⚠️ Filters changed — <a id="staleApplyLink" href="#" style="color:#7d6608;font-weight:700;text-decoration:underline;cursor:pointer">Apply now</a> to update results.
+  </div>
+
+  <div class="summary-grid" id="summaryGrid">
+    <div class="sum-card">
+      <div class="sum-label">Total Orders</div>
+      <div class="sum-value" id="sumTotal">—</div>
+    </div>
+    <div class="sum-card green financial-section">
+      <div class="sum-label">Revenue</div>
+      <div class="sum-value" id="sumRev">—</div>
+    </div>
+    <div class="sum-card orange financial-section">
+      <div class="sum-label">Cost</div>
+      <div class="sum-value" id="sumCost">—</div>
+    </div>
+    <div class="sum-card purple financial-section">
+      <div class="sum-label">Profit</div>
+      <div class="sum-value" id="sumProfit">—</div>
+    </div>
+  </div>
+
+  <div class="breakdown-grid financial-section" id="breakdownGrid">
+    <div class="breakdown-card">
+      <h3>By Payment Status</h3>
+      <div id="byStatus">—</div>
+    </div>
+    <div class="breakdown-card">
+      <h3>Top 10 Clients</h3>
+      <div id="byClient">—</div>
+    </div>
+  </div>
+
+  <div class="section-header">
+    <div class="section-title">📋 Order Details</div>
+    <div class="result-count" id="rowCount">— records</div>
+  </div>
+
+  <div class="table-wrap" style="flex:1">
+    <div class="table-scroll" style="max-height:none">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Date</th>
+            <th>Client WO</th>
+            <th>Client</th>
+            <th>Service</th>
+            <th>Provider</th>
+            <th>Location</th>
+            <th>Start</th>
+            <th>End</th>
+            <th>Dur (min)</th>
+            <th class="col-fin financial-section">Revenue</th>
+            <th class="col-fin financial-section">Cost</th>
+            <th class="col-fin financial-section">Profit</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="tblBody"></tbody>
+      </table>
+      <div class="no-results" id="noResults" style="display:none">No results found</div>
+    </div>
+  </div>
+</div>
+
+<script src="../js/http-api.js"></script>
+<script src="../js/perm-matrix.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/reports.js"></script>
+</body>
+</html>

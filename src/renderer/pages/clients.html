@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PMP — Clients</title>
+<link rel="stylesheet" href="../css/styles.css">
+</head>
+<body class="page-body">
+
+<header id="appHeader"></header>
+
+<div class="main">
+  <div class="toolbar">
+    <button class="back-btn" id="btnBack">← Dashboard</button>
+    <div class="grow"></div>
+    <input class="field-input" id="searchBox" aria-label="Search clients by name or code" placeholder="🔍 Search by name or code..." style="width:280px">
+    <button class="btn btn-add" id="btnAdd">＋ Add Client</button>
+    <button class="btn btn-neutral" id="btnRefresh" title="Refresh" aria-label="Refresh">↻</button>
+  </div>
+
+  <div class="table-wrap" style="flex:1">
+    <div class="table-scroll" style="max-height:none">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Code</th>
+            <th>Group</th>
+            <th>Last WO No.</th>
+            <th style="width:130px"></th>
+          </tr>
+        </thead>
+        <tbody id="tblBody"></tbody>
+      </table>
+      <div class="no-results" id="noResults" style="display:none">No clients found</div>
+    </div>
+    <div class="refresh-bar">
+      <span id="rowCount">— clients</span>
+      <span class="spacer"></span>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-header" id="modalTitle">Add Client</div>
+    <div class="modal-body">
+      <input type="hidden" id="fId">
+      <div class="form-grid">
+        <div class="field-wrap" style="grid-column:1/-1">
+          <label class="field-label" for="fName">Name <span class="req">*</span></label>
+          <input class="field-input" id="fName" maxlength="80">
+        </div>
+        <div class="field-wrap">
+          <label class="field-label" for="fCode">Code (for WO) <span class="req">*</span></label>
+          <input class="field-input" id="fCode" maxlength="20" style="text-transform:uppercase">
+        </div>
+        <div class="field-wrap">
+          <label class="field-label" for="fGroup">Group</label>
+          <input class="field-input" id="fGroup" maxlength="40">
+        </div>
+        <div class="field-wrap" style="grid-column:1/-1">
+          <label class="field-label" for="fNotes">Notes</label>
+          <textarea class="field-textarea" id="fNotes" rows="2"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-cancel" id="btnCancel">Cancel</button>
+      <button class="btn btn-add" id="btnSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/http-api.js"></script>
+<script src="../js/perm-matrix.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/clients.js"></script>
+</body>
+</html>
