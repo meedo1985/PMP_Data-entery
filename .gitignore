@@ -11,5 +11,6 @@ userdata/
 .env.local
 .DS_Store
 Thumbs.db
+.claude/settings.local.json
 *.log
 npm-debug.log*
