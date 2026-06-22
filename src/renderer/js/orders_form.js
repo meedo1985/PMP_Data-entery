@@ -404,7 +404,7 @@ window.OrdersForm = (function () {
     try {
       const services = await window.pmp.catalog.list(cat) || [];
       sel.innerHTML = '<option value="">— Select Service —</option>' +
-        services.map(s => `<option value="${s.name}">${esc(s.name)}</option>`).join('');
+        services.map(s => `<option value="${esc(s.name)}">${esc(s.name)}</option>`).join('');
     } catch (_) {
       const fallback = {
         live:    ['Live Studio','Live Stand Up','Live SNG','Live Studio - TVU','SNG Truck'],

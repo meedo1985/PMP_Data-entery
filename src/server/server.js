@@ -8,15 +8,20 @@ const session        = require('express-session');
 const MemoryStore    = require('memorystore')(session);
 const cookieParser   = require('cookie-parser');
 const rateLimit      = require('express-rate-limit');
+const helmet         = require('helmet');
 const path           = require('path');
 const fs             = require('fs');
 const os             = require('os');
+const http           = require('http');
+const https          = require('https');
 const crypto         = require('crypto');
 const QRCode         = require('qrcode');
 
 const db             = require('../db/database');
 const auth           = require('../services/auth');
 const permissions    = require('../services/permissions');
+const settingsSvc    = require('../services/settings');
+const backup         = require('../services/backup');
 const users          = require('../services/users');
 const clients        = require('../services/clients');
 const providers      = require('../services/providers');
@@ -33,20 +38,20 @@ let _cachedSessionSecret = null;
 
 function getOrCreateSessionSecret() {
   if (_cachedSessionSecret) return _cachedSessionSecret;
-  const database = db.get();
-  const row = database.prepare('SELECT value FROM app_settings WHERE key = ?').get('session_secret');
-  if (row && row.value) {
-    _cachedSessionSecret = row.value;
-    return _cachedSessionSecret;
-  }
+  const existing = settingsSvc.get('session_secret');
+  if (existing) { _cachedSessionSecret = existing; return existing; }
   const secret = crypto.randomBytes(48).toString('hex');
   // The secret is stored in the app DB (plaintext). This is an acceptable trade-off for a
   // LAN-only desktop app where DB file access implies physical admin access. If this app ever
   // needs stronger session security, move the secret to a separate file with OS-level permissions.
-  database.prepare('INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)').run('session_secret', secret);
+  settingsSvc.set('session_secret', secret);
   _cachedSessionSecret = secret;
   return secret;
 }
+
+// Set by start() before createApp(): true when serving over HTTPS so the session
+// cookie can be marked Secure.
+let _useHttps = false;
 
 function createApp() {
   const app = express();
@@ -62,6 +67,27 @@ function createApp() {
   app.disable('x-powered-by');
   app.set('trust proxy', 'loopback');
 
+  // Security headers + CSP. 'unsafe-inline' is required for scripts/styles because
+  // the renderer uses inline event handlers and inline <style> blocks (shared with
+  // the Electron file:// pages). Even so, default-src/connect-src 'self' blocks the
+  // main XSS exfiltration vector (loading or phoning home to a remote origin).
+  // HSTS is off because the LAN runs over plain HTTP by default.
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", 'data:'],
+        connectSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"]
+      }
+    },
+    hsts: false,
+    crossOriginEmbedderPolicy: false
+  }));
+
   app.use(express.json({ limit: '2mb' }));
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
@@ -75,11 +101,24 @@ function createApp() {
     cookie: {
       httpOnly: true,
       sameSite: 'lax',             // 'lax' is best for compatibility with LAN IP access
-      secure: false,             // HTTP on LAN; enable if you add HTTPS
+      secure: _useHttps,           // Secure cookie only when serving over HTTPS
       maxAge: 12 * 60 * 60 * 1000 // 12h
     },
     store: new MemoryStore({ checkPeriod: 24 * 60 * 60 * 1000 })
   }));
+
+  // must_change_pwd lockout: a user who still owes a password change may only
+  // log out or change their password. Everything else under /api is blocked.
+  app.use((req, res, next) => {
+    const u = req.session && req.session.user;
+    if (u && u.must_change_pwd && req.path.startsWith('/api/')) {
+      const allowed = ['/api/auth/change-password', '/api/auth/logout', '/api/auth/me'];
+      if (!allowed.includes(req.path)) {
+        return res.status(403).json({ ok: false, error: 'MUST_CHANGE_PASSWORD' });
+      }
+    }
+    next();
+  });
 
   // Rate-limit the login endpoint (defense against brute-force on LAN)
   const loginLimiter = rateLimit({
@@ -148,13 +187,14 @@ function createApp() {
     try {
       const { oldPassword, newPassword } = req.body || {};
       const out = await auth.changePassword(req.session.user.id, oldPassword, newPassword);
+      if (out && out.ok) req.session.user.must_change_pwd = 0; // unlock the session
       ok(res, out);
     } catch (e) { fail(res, e); }
   });
 
-  // ----- Users (admin only) -----
-  app.get   ('/api/users',        requireRole('admin'), (req, res) => { try { ok(res, users.list()); } catch (e) { fail(res, e); } });
-  app.post  ('/api/users',        requireRole('admin'), (req, res) => { try { ok(res, users.create(req.body)); } catch (e) { fail(res, e); } });
+  // ----- Users (manageUsers) -----
+  app.get   ('/api/users',        requirePermission('manageUsers'), (req, res) => { try { ok(res, users.list()); } catch (e) { fail(res, e); } });
+  app.post  ('/api/users',        requirePermission('manageUsers'), (req, res) => { try { ok(res, users.create(req.body)); } catch (e) { fail(res, e); } });
   // Self-update (any logged-in user can update their own full_name)
   app.put   ('/api/users/me',     requireAuth, (req, res) => {
     try {
@@ -164,43 +204,16 @@ function createApp() {
       req.session.user = { ...u, full_name: full_name || u.full_name };
     } catch (e) { fail(res, e); }
   });
-  app.put   ('/api/users/:id',    requireRole('admin'), (req, res) => { try { ok(res, users.update({ ...req.body, id: Number(req.params.id) })); } catch (e) { fail(res, e); } });
-  app.delete('/api/users/:id',    requireRole('admin'), (req, res) => { try { ok(res, users.remove(Number(req.params.id), req.session.user.id)); } catch (e) { fail(res, e); } });
+  app.put   ('/api/users/:id',    requirePermission('manageUsers'), (req, res) => { try { ok(res, users.update({ ...req.body, id: Number(req.params.id) })); } catch (e) { fail(res, e); } });
+  app.delete('/api/users/:id',    requirePermission('manageUsers'), (req, res) => { try { ok(res, users.remove(Number(req.params.id), req.session.user.id)); } catch (e) { fail(res, e); } });
 
-  // ----- Company Settings (admin only) -----
-  app.get('/api/settings/company', requireRole('admin'), (req, res) => {
-    try {
-      const database = db.get();
-      const getSetting = (k, d) => {
-        const row = database.prepare('SELECT value FROM app_settings WHERE key = ?').get(k);
-        return row ? row.value : d;
-      };
-      ok(res, {
-        company_name:      getSetting('company_name',      'PMP Media Productions'),
-        department_name:   getSetting('department_name',   'Production Department'),
-        company_address:   getSetting('company_address',   ''),
-        company_phone:     getSetting('company_phone',     ''),
-        company_email:     getSetting('company_email',     ''),
-        manager_name:      getSetting('manager_name',      ''),
-        manager_title:     getSetting('manager_title',     'General Manager'),
-        company_logo_path: getSetting('company_logo_path', '')
-      });
-    } catch (e) { fail(res, e); }
+  // ----- Company Settings (manageSettings) -----
+  app.get('/api/settings/company', requirePermission('manageSettings'), (req, res) => {
+    try { ok(res, settingsSvc.getCompany()); } catch (e) { fail(res, e); }
   });
 
-  app.put('/api/settings/company', requireRole('admin'), (req, res) => {
-    try {
-      const database = db.get();
-      const set = (k, v) => database.prepare(
-        'INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)'
-      ).run(k, String(v == null ? '' : v));
-      const data = req.body || {};
-      ['company_name','department_name','company_address','company_phone','company_email',
-       'manager_name','manager_title','company_logo_path'].forEach(k => {
-        if (Object.prototype.hasOwnProperty.call(data, k)) set(k, data[k]);
-      });
-      ok(res, { ok: true });
-    } catch (e) { fail(res, e); }
+  app.put('/api/settings/company', requirePermission('manageSettings'), (req, res) => {
+    try { ok(res, settingsSvc.saveCompany(req.body || {})); } catch (e) { fail(res, e); }
   });
 
   // ----- Clients -----
@@ -216,21 +229,21 @@ function createApp() {
   app.get   ('/api/providers/:id', requireAuth, (req, res) => { try { ok(res, providers.get(Number(req.params.id))); } catch (e) { fail(res, e); } });
   app.post  ('/api/providers',     requirePermission('manageProviders'), (req, res) => { try { ok(res, providers.save(req.body)); } catch (e) { fail(res, e); } });
   app.put   ('/api/providers/:id', requirePermission('manageProviders'), (req, res) => { try { ok(res, providers.save({ ...req.body, id: Number(req.params.id) })); } catch (e) { fail(res, e); } });
-  app.delete('/api/providers/:id', requireRole('admin'), (req, res) => { try { ok(res, providers.remove(Number(req.params.id))); } catch (e) { fail(res, e); } });
+  app.delete('/api/providers/:id', requirePermission('manageProviders'), (req, res) => { try { ok(res, providers.remove(Number(req.params.id))); } catch (e) { fail(res, e); } });
 
   // ----- Orders -----
   app.get   ('/api/orders',          requireAuth, (req, res) => { try { ok(res, orders.list(req.query, req.session.user)); } catch (e) { fail(res, e); } });
   app.get   ('/api/orders/recent',   requireAuth, (req, res) => { try { ok(res, orders.recent(Number(req.query.limit) || 50, req.session.user)); } catch (e) { fail(res, e); } });
   app.get   ('/api/orders/kpis',     requireAuth, (req, res) => { try { ok(res, orders.getKpis(req.session.user)); } catch (e) { fail(res, e); } });
   app.get   ('/api/orders/:id',      requireAuth, (req, res) => { try { ok(res, orders.get(Number(req.params.id), req.session.user)); } catch (e) { fail(res, e); } });
-  app.post  ('/api/orders',          requireAuth, (req, res) => { try { ok(res, orders.save(req.body, req.session.user)); } catch (e) { fail(res, e); } });
-  app.put   ('/api/orders/:id',      requireAuth, (req, res) => { try { ok(res, orders.save({ ...req.body, id: Number(req.params.id) }, req.session.user)); } catch (e) { fail(res, e); } });
-  app.delete('/api/orders/:id',      requireRole(['admin','manager']), (req, res) => { try { ok(res, orders.remove(Number(req.params.id))); } catch (e) { fail(res, e); } });
+  app.post  ('/api/orders',          requirePermission('editOrders'), (req, res) => { try { ok(res, orders.save(req.body, req.session.user)); } catch (e) { fail(res, e); } });
+  app.put   ('/api/orders/:id',      requirePermission('editOrders'), (req, res) => { try { ok(res, orders.save({ ...req.body, id: Number(req.params.id) }, req.session.user)); } catch (e) { fail(res, e); } });
+  app.delete('/api/orders/:id',      requirePermission('deleteOrders'), (req, res) => { try { ok(res, orders.remove(Number(req.params.id))); } catch (e) { fail(res, e); } });
 
   // ----- Payments -----
   app.get   ('/api/orders/:id/payments', requireAuth, (req, res) => { try { ok(res, payments.listForOrder(Number(req.params.id))); } catch (e) { fail(res, e); } });
-  app.post  ('/api/payments', requireRole(['admin','manager','accountant']), (req, res) => { try { ok(res, payments.add(req.body, req.session.user)); } catch (e) { fail(res, e); } });
-  app.delete('/api/payments/:id', requireRole(['admin','manager','accountant']), (req, res) => { try { ok(res, payments.remove(Number(req.params.id), req.session.user)); } catch (e) { fail(res, e); } });
+  app.post  ('/api/payments', requirePermission('managePayments'), (req, res) => { try { ok(res, payments.add(req.body, req.session.user)); } catch (e) { fail(res, e); } });
+  app.delete('/api/payments/:id', requirePermission('managePayments'), (req, res) => { try { ok(res, payments.remove(Number(req.params.id), req.session.user)); } catch (e) { fail(res, e); } });
 
   // ----- Provider Locations -----
   app.get   ('/api/providers/:id/locations',    requireAuth, (req, res) => { try { ok(res, locations.listForProvider(req.params.id)); } catch (e) { fail(res, e); } });
@@ -320,7 +333,7 @@ function createApp() {
   app.get ('/api/reports/summary',  requireAuth, (req, res) => { try { ok(res, reports.summary(req.query, req.session.user)); } catch (e) { fail(res, e); } });
 
   // Streaming Excel download (LAN users get a direct file)
-  app.get('/api/reports/export', requireAuth, async (req, res) => {
+  app.get('/api/reports/export', requirePermission('exportReports'), async (req, res) => {
     try {
       const { wb } = await reports.buildReportWorkbook(req.query, req.session.user);
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -355,7 +368,7 @@ function createApp() {
   });
 
   // Audit log (admin only)
-  app.get('/api/sys/audit-log', requireRole('admin'), (req, res) => {
+  app.get('/api/sys/audit-log', requirePermission('manageSettings'), (req, res) => {
     try {
       const rows = db.get().prepare(`
         SELECT a.ts, a.action, a.entity, a.level, a.details, u.username
@@ -367,7 +380,7 @@ function createApp() {
   });
 
   // QR code for LAN access (admin only — generates PNG of first LAN URL)
-  app.get('/api/sys/qrcode', requireRole('admin'), async (req, res) => {
+  app.get('/api/sys/qrcode', requirePermission('manageSettings'), async (req, res) => {
     try {
       let addresses = getLanAddresses();
       // Sort: prioritize 192.168.x.x addresses as they are most common for home LANs
@@ -392,6 +405,11 @@ function createApp() {
       res.status(500).json({ ok: false, error: 'QR generation failed' });
     }
   });
+
+  // ----- Backups (manageSettings) — list + create. Restore is desktop-only
+  // (it closes/reopens the DB, which is unsafe to do mid-request while serving). -----
+  app.get ('/api/sys/backups',     requirePermission('manageSettings'), (req, res) => { try { ok(res, backup.list()); } catch (e) { fail(res, e); } });
+  app.post('/api/sys/backups',     requirePermission('manageSettings'), async (req, res) => { try { ok(res, await backup.create('manual')); } catch (e) { fail(res, e); } });
 
   // ================================================================
   // Static files + HTML routing (serves the SAME renderer/ folder)
@@ -434,17 +452,38 @@ function createApp() {
 let httpServer = null;
 let _currentPort = 3737;
 
+// Optional HTTPS: if app_settings has https_cert + https_key pointing at readable
+// PEM files, the LAN server runs over TLS and cookies become Secure. Otherwise it
+// stays plain HTTP. ponytail: bring-your-own-cert; skip self-signed auto-gen until
+// someone actually needs it (that pulls in a cert library for little gain on a LAN).
+function _resolveTls() {
+  const certPath = settingsSvc.get('https_cert');
+  const keyPath  = settingsSvc.get('https_key');
+  if (certPath && keyPath && fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+    try {
+      return { cert: fs.readFileSync(certPath), key: fs.readFileSync(keyPath) };
+    } catch (e) {
+      console.error('[server] HTTPS cert/key unreadable, falling back to HTTP:', e.message);
+    }
+  }
+  return null;
+}
+
 function start({ host = '0.0.0.0', port = 3737 } = {}) {
   _currentPort = port;
   return new Promise((resolve, reject) => {
     if (httpServer) return resolve({ alreadyRunning: true, port });
+    const tls = _resolveTls();
+    _useHttps = !!tls;
     const app = createApp();
-    httpServer = app.listen(port, host, (err) => {
+    const proto = _useHttps ? 'https' : 'http';
+    httpServer = _useHttps ? https.createServer(tls, app) : http.createServer(app);
+    httpServer.listen(port, host, (err) => {
       if (err) return reject(err);
-      console.log(`[server] listening on http://${host}:${port}`);
+      console.log(`[server] listening on ${proto}://${host}:${port}`);
       console.log('[server] LAN addresses:');
-      for (const addr of getLanAddresses()) console.log('   http://' + addr + ':' + port);
-      resolve({ host, port, lan: getLanAddresses() });
+      for (const addr of getLanAddresses()) console.log(`   ${proto}://${addr}:${port}`);
+      resolve({ host, port, proto, lan: getLanAddresses() });
     });
     httpServer.on('error', reject);
   });

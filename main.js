@@ -20,7 +20,7 @@ if (process.env.ELECTRON_RUN_AS_NODE && relaunchCount < 2) {
   return;
 }
 
-const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu, session: electronSession } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -73,7 +73,15 @@ const db = require('./src/db/database');
 const users = require('./src/services/users');
 const migrate = require('./src/db/migrate-from-excel');
 const server = require('./src/server/server');
+const settings = require('./src/services/settings');
+const backup = require('./src/services/backup');
 const ipcRegistry = require('./src/main/ipc/index'); // Ensure this directory exists
+
+// CSP applied to the Electron file:// pages (mirrors the helmet CSP on the LAN
+// server). 'unsafe-inline' is required by the renderer's inline handlers/styles.
+const CSP = "default-src 'self'; script-src 'self' 'unsafe-inline'; " +
+  "style-src 'self' 'unsafe-inline'; img-src 'self' data:; " +
+  "connect-src 'self'; object-src 'none'; base-uri 'self'";
 
 // ---------- Session state ----------
 const session = { currentUser: null };
@@ -116,6 +124,11 @@ app.whenReady().then(async () => {
 
     db.init();
 
+    // Apply CSP to all renderer responses (file:// pages).
+    electronSession.defaultSession.webRequest.onHeadersReceived((details, cb) => {
+      cb({ responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [CSP] } });
+    });
+
     // One-shot CLI: reset/create the admin account, then exit without opening a window.
     if (isResetAdminCmd) {
       const r = users.resetAdmin();
@@ -138,6 +151,13 @@ app.whenReady().then(async () => {
       console.log('Migration result:', result);
     }
 
+    // Daily DB backup: make one now if today's is missing, then re-check every 12h
+    // so an app left open across midnight still gets its daily snapshot.
+    backup.dailyIfNeeded().catch(e => console.error('[backup] daily failed:', e.message));
+    setInterval(() => {
+      backup.dailyIfNeeded().catch(e => console.error('[backup] daily failed:', e.message));
+    }, 12 * 60 * 60 * 1000).unref();
+
     // Start LAN server (if enabled in app_settings)
     await startLanServerIfEnabled();
 
@@ -152,21 +172,12 @@ app.whenReady().then(async () => {
 });
 
 async function startLanServerIfEnabled() {
-  const database = db.get();
   // Defaults: enabled=1, port=3737
-  const getSetting = (k, d) => {
-    const row = database.prepare('SELECT value FROM app_settings WHERE key = ?').get(k);
-    return row ? row.value : d;
-  };
-  const setSetting = (k, v) => database.prepare(
-    'INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)'
-  ).run(k, String(v));
+  if (settings.get('lan_enabled') === null) settings.set('lan_enabled', '1');
+  if (settings.get('lan_port')    === null) settings.set('lan_port',    '3737');
 
-  if (getSetting('lan_enabled') === null) setSetting('lan_enabled', '1');
-  if (getSetting('lan_port')    === null) setSetting('lan_port',    '3737');
-
-  const enabled = getSetting('lan_enabled', '1') === '1';
-  const port    = Number(getSetting('lan_port', '3737')) || 3737;
+  const enabled = settings.get('lan_enabled', '1') === '1';
+  const port    = Number(settings.get('lan_port', '3737')) || 3737;
 
   if (!enabled) {
     console.log('[main] LAN server disabled (app_settings.lan_enabled = 0)');

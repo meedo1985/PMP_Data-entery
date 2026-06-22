@@ -333,6 +333,17 @@
         <div id="importReport" style="display:none;margin-top:16px;padding:14px;background:#f4f6f8;border-radius:3px;font-size:12px;max-height:400px;overflow-y:auto"></div>
       </div>
 
+      <div class="card-box" id="cardBackup" style="grid-column:1/-1">
+        <h3>💾 Backups</h3>
+        <p style="font-size:12px;color:#5a6a7a;margin-bottom:10px">
+          A backup is taken automatically once a day. The last 30 are kept. You can also back up now or restore an earlier copy.
+        </p>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+          <button class="btn btn-save" id="btnBackupNow">Back Up Now</button>
+        </div>
+        <div id="backupList" style="font-size:12px;max-height:240px;overflow-y:auto;background:#f4f6f8;padding:10px;border-radius:3px">Loading...</div>
+      </div>
+
       <div class="card-box" id="cardAudit" style="grid-column:1/-1">
         <h3>📋 Audit Log</h3>
         <p style="font-size:12px;color:#5a6a7a;margin-bottom:10px">Last 50 system operations</p>

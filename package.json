@@ -26,6 +26,7 @@
     "express": "^4.21.0",
     "express-rate-limit": "^7.4.0",
     "express-session": "^1.18.1",
+    "helmet": "^8.2.0",
     "memorystore": "^1.6.7",
     "pizzip": "^3.1.7",
     "qrcode": "^1.5.4"
@@ -60,11 +61,15 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "requestedExecutionLevel": "asInvoker"

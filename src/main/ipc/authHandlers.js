@@ -19,9 +19,14 @@ module.exports = ({ ipcMain, session, getWindow, requireAuth }) => {
 
   ipcMain.handle('auth:me', async () => session.currentUser);
 
-  ipcMain.handle('auth:changePassword', requireAuth(async (user, { oldPassword, newPassword }) => {
-    return auth.changePassword(user.id, oldPassword, newPassword);
-  }));
+  // NOT wrapped in requireAuth: this must remain callable while the user is
+  // locked out by must_change_pwd. It does its own authentication check.
+  ipcMain.handle('auth:changePassword', async (event, { oldPassword, newPassword }) => {
+    if (!session.currentUser) throw new Error('NOT_AUTHENTICATED');
+    const res = await auth.changePassword(session.currentUser.id, oldPassword, newPassword);
+    if (res && res.ok) session.currentUser.must_change_pwd = 0; // unlock the session
+    return res;
+  });
 
   // nav:goto redirects to login if session has expired rather than throwing,
   // so callers on any page don't need to handle NOT_AUTHENTICATED explicitly.

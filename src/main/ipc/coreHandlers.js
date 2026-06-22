@@ -18,20 +18,20 @@ module.exports = ({ ipcMain, requireAuth, requireRole, requirePermission }) => {
   ipcMain.handle('providers:list',   requireAuth(() => providers.list()));
   ipcMain.handle('providers:get',    requireAuth((u, id) => providers.get(id)));
   ipcMain.handle('providers:save',   requirePermission('manageProviders', (u, data) => providers.save(data)));
-  ipcMain.handle('providers:delete', requireRole(['admin'], (u, id) => providers.remove(id)));
+  ipcMain.handle('providers:delete', requirePermission('manageProviders', (u, id) => providers.remove(id)));
 
   // Orders
   ipcMain.handle('orders:list',   requireAuth((u, filters) => orders.list(filters, u)));
   ipcMain.handle('orders:get',    requireAuth((u, id) => orders.get(id, u)));
-  ipcMain.handle('orders:save',   requireAuth((u, data) => orders.save(data, u)));
-  ipcMain.handle('orders:delete', requireRole(['admin','manager'], (u, id) => orders.remove(id)));
+  ipcMain.handle('orders:save',   requirePermission('editOrders', (u, data) => orders.save(data, u)));
+  ipcMain.handle('orders:delete', requirePermission('deleteOrders', (u, id) => orders.remove(id)));
   ipcMain.handle('orders:recent', requireAuth((u, limit) => orders.recent(limit || 50, u)));
   ipcMain.handle('orders:kpis',   requireAuth((u) => orders.getKpis(u)));
 
   // Payments
   ipcMain.handle('payments:list', requireAuth((u, orderId) => payments.listForOrder(orderId)));
-  ipcMain.handle('payments:add',  requireRole(['admin','manager','accountant'], (u, data) => payments.add(data, u)));
-  ipcMain.handle('payments:remove', requireRole(['admin','manager','accountant'], (u, id) => payments.remove(id, u)));
+  ipcMain.handle('payments:add',  requirePermission('managePayments', (u, data) => payments.add(data, u)));
+  ipcMain.handle('payments:remove', requirePermission('managePayments', (u, id) => payments.remove(id, u)));
 
   // Pricing
   ipcMain.handle('pricing:getDefault',       requireAuth(() => pricing.getDefault()));

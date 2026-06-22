@@ -159,47 +159,10 @@ function init() {
   }
   _db.exec("DROP VIEW IF EXISTS v_orders_full;");
 
-  // Ensure Pricing Tables exist to prevent "no such table" errors in Pricing UI
-  _db.exec(`
-    CREATE TABLE IF NOT EXISTS pricing_default (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      category TEXT NOT NULL,
-      type TEXT,
-      label TEXT,
-      price REAL NOT NULL,
-      UNIQUE(category, type, label)
-    );
-    CREATE TABLE IF NOT EXISTS pricing_client (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
-      category TEXT NOT NULL,
-      type TEXT,
-      label TEXT,
-      price REAL NOT NULL,
-      UNIQUE(client_id, category, type, label)
-    );
-    CREATE TABLE IF NOT EXISTS pricing_provider (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      provider_id INTEGER NOT NULL REFERENCES providers(id) ON DELETE CASCADE,
-      category    TEXT NOT NULL,
-      type        TEXT,
-      label       TEXT,
-      cost        REAL NOT NULL,
-      UNIQUE(provider_id, category, type, label)
-    );
-  `);
-
-  // Safety: ensure providers table exists no matter what happened above
-  _db.exec(
-    "CREATE TABLE IF NOT EXISTS providers (" +
-    "  id INTEGER PRIMARY KEY AUTOINCREMENT," +
-    "  name TEXT NOT NULL COLLATE NOCASE," +
-    "  place TEXT, type TEXT, notes TEXT," +
-    "  active INTEGER NOT NULL DEFAULT 1," +
-    "  created_at TEXT NOT NULL DEFAULT (datetime('now'))," +
-    "  UNIQUE(name, type) ON CONFLICT IGNORE" +
-    ");"
-  );
+  // NOTE: pricing_* and providers tables are defined in schema.sql (applied above
+  // as idempotent CREATE TABLE IF NOT EXISTS) and no migration drops them, so the
+  // duplicate DDL that used to live here was removed. The view below is the only
+  // object that must be recreated, because migrate_v3 drops it during its rebuild.
 
   // Always recreate the view after migrations — migrate_v3 drops it as part of the
   // table-rename workaround, so we must restore it here unconditionally.

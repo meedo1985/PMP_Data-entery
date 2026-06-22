@@ -76,9 +76,14 @@
 
     if (hasPerm(currentUser, 'manageSettings')) {
       loadAuditLog();
+      const btnBackupNow = document.getElementById('btnBackupNow');
+      if (btnBackupNow) btnBackupNow.addEventListener('click', onBackupNow);
+      loadBackups();
     } else {
       const cardAudit = document.getElementById('cardAudit');
       if (cardAudit) cardAudit.style.display = 'none';
+      const cardBackup = document.getElementById('cardBackup');
+      if (cardBackup) cardBackup.style.display = 'none';
     }
 
     // Services catalog tab
@@ -556,6 +561,60 @@
     } catch (err) {
       const el = document.getElementById('auditLog');
       if (el) el.textContent = 'Error: ' + (err.message || err);
+    }
+  }
+
+  // ================================================================
+  // BACKUPS
+  // ================================================================
+  function fmtBytes(n) {
+    if (n < 1024) return n + ' B';
+    if (n < 1048576) return (n / 1024).toFixed(0) + ' KB';
+    return (n / 1048576).toFixed(1) + ' MB';
+  }
+
+  async function loadBackups() {
+    const el = document.getElementById('backupList');
+    if (!el) return;
+    try {
+      const rows = await window.pmp.sys.backupList();
+      if (!rows || !rows.length) { el.textContent = '(No backups yet)'; return; }
+      const canRestore = !isBrowser; // restore is desktop-only
+      el.innerHTML = rows.map(b => `
+        <div style="display:flex;align-items:center;gap:10px;padding:4px 0;border-bottom:1px solid #e6eaee">
+          <span style="flex:1;font-family:monospace">${esc(b.name)}</span>
+          <span style="color:#95a5a6">${fmtBytes(b.size)}</span>
+          ${canRestore ? `<button class="btn" style="height:26px;padding:0 10px;font-size:11px" data-restore="${esc(b.name)}">Restore</button>` : ''}
+        </div>`).join('');
+      if (canRestore) {
+        el.querySelectorAll('[data-restore]').forEach(btn =>
+          btn.addEventListener('click', () => onRestore(btn.dataset.restore)));
+      }
+    } catch (err) {
+      el.textContent = 'Error: ' + (err.message || err);
+    }
+  }
+
+  async function onBackupNow() {
+    const btn = document.getElementById('btnBackupNow');
+    if (btn) { btn.disabled = true; btn.textContent = 'Backing up...'; }
+    try {
+      await window.pmp.sys.backupNow();
+      await loadBackups();
+    } catch (err) {
+      alert('Backup failed: ' + (err.message || err));
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Back Up Now'; }
+    }
+  }
+
+  async function onRestore(name) {
+    if (!confirm(`Restore from "${name}"?\n\nThis replaces the current database. A safety backup of the current data is taken first. The app will return to the login screen.`)) return;
+    try {
+      await window.pmp.sys.backupRestore(name);
+      // The window is bounced to login by the main process after restore.
+    } catch (err) {
+      alert('Restore failed: ' + (err.message || err));
     }
   }
 

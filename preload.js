@@ -96,7 +96,10 @@ contextBridge.exposeInMainWorld('pmp', {
     auditLog:         () => invoke('sys:auditLog'),
     lanStatus: () => invoke('sys:lanStatus'),
     lanToggle: (opts) => invoke('sys:lanToggle', opts),
-    qrcode:    () => invoke('sys:qrcode')
+    qrcode:    () => invoke('sys:qrcode'),
+    backupNow:     () => invoke('sys:backupNow'),
+    backupList:    () => invoke('sys:backupList'),
+    backupRestore: (name) => invoke('sys:backupRestore', name)
   },
 
   // Provider Locations

@@ -15,6 +15,7 @@
 const fs   = require('fs');
 const path = require('path');
 const db   = require('../db/database');
+const settings = require('./settings');
 
 // ---- Helpers ----
 function fmtDate(iso) {
@@ -29,21 +30,7 @@ function fmtMoney(n) {
 
 // ---- Company settings (stored in app_settings) ----
 function getCompanySettings() {
-  const database = db.get();
-  const getSetting = (k, d) => {
-    const row = database.prepare('SELECT value FROM app_settings WHERE key = ?').get(k);
-    return row ? row.value : d;
-  };
-  return {
-    company_name:      getSetting('company_name',      'PMP Media Productions'),
-    department_name:   getSetting('department_name',   'Production Department'),
-    company_address:   getSetting('company_address',   ''),
-    company_phone:     getSetting('company_phone',     ''),
-    company_email:     getSetting('company_email',     ''),
-    manager_name:      getSetting('manager_name',      ''),
-    manager_title:     getSetting('manager_title',     'General Manager'),
-    company_logo_path: getSetting('company_logo_path', '')
-  };
+  return settings.getCompany();
 }
 
 // ---- Get full order data for template ----

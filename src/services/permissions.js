@@ -42,10 +42,11 @@ function isAdmin(user) {
   return user && user.role === 'admin';
 }
 
-// Middleware factory for IPC / Express
+// Middleware factory for IPC / Express.
+// No role bypass: admin gets through because the matrix grants admin every key.
+// Permissions are the single source of truth (per-user overrides included).
 function requirePermission(action) {
   return (fn) => (user, ...args) => {
-    if (isAdmin(user)) return fn(user, ...args);
     if (!can(user, action)) throw new Error('FORBIDDEN: ' + action);
     return fn(user, ...args);
   };

@@ -4,12 +4,13 @@
 // ================================================================
 const db = require('../db/database');
 const clientsSvc = require('./clients');
+const permissions = require('./permissions');
 
-// Fields hidden from the coordination role
+// Fields hidden from users without the viewFinancial permission
 const FINANCIAL_FIELDS = ['revenue', 'cost', 'rate', 'profit', 'paid_amount', 'due_amount'];
 
 function _maskFinancial(row, user) {
-  if (!row || !user || user.role !== 'coordination') return row;
+  if (!row || permissions.can(user, 'viewFinancial')) return row;
   const out = { ...row };
   for (const f of FINANCIAL_FIELDS) if (f in out) out[f] = null;
   return out;
@@ -81,10 +82,10 @@ function save(data, user) {
   const doSave = db.tx((data, user, now) => {
     const fields = _extractFields(data);
 
-    // Coordination cannot see financial values (orders.list/get mask them), so it must
-    // not be able to write them either. Stripping the keys means: on INSERT the column
-    // defaults apply, and on UPDATE the existing values are preserved (not zeroed out).
-    if (user.role === 'coordination') {
+    // Users without viewFinancial cannot see financial values (orders.list/get mask
+    // them), so they must not be able to write them either. Stripping the keys means:
+    // on INSERT the column defaults apply, and on UPDATE existing values are preserved.
+    if (!permissions.can(user, 'viewFinancial')) {
       for (const f of FINANCIAL_FIELDS) delete fields[f];
     }
 
@@ -169,7 +170,7 @@ function getKpis(user) {
 
   const base = { total_orders: total, month_orders: month, month_label: _arabicMonth(now.getMonth()) + ' ' + y };
 
-  if (user.role === 'coordination') {
+  if (!permissions.can(user, 'viewFinancial')) {
     return { ...base, total_revenue: null, month_revenue: null };
   }
 

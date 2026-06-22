@@ -194,7 +194,10 @@
       auditLog:         async () => GET('/api/sys/audit-log'),
       lanStatus:        async () => GET('/api/sys/lan-status'),
       lanToggle:        async () => { throw new Error('UNAVAILABLE_IN_BROWSER'); },
-      qrcode:           async () => ({ ok: false, error: 'UNAVAILABLE_IN_BROWSER' })
+      qrcode:           async () => ({ ok: false, error: 'UNAVAILABLE_IN_BROWSER' }),
+      backupNow:        async () => POST('/api/sys/backups', {}),
+      backupList:       async () => GET('/api/sys/backups'),
+      backupRestore:    async () => { throw new Error('UNAVAILABLE_IN_BROWSER'); }
     },
 
     settings: {

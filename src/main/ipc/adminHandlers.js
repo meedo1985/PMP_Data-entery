@@ -6,13 +6,15 @@ const invoices = require('../../services/invoices');
 const migrate = require('../../db/migrate-from-excel');
 const server = require('../../server/server');
 const db = require('../../db/database');
+const settings = require('../../services/settings');
+const backup = require('../../services/backup');
 
-module.exports = ({ ipcMain, requireAuth, requireRole, getWindow }) => {
-  // ----- Users (admin only) -----
-  ipcMain.handle('users:list',   requireRole(['admin'], () => users.list()));
-  ipcMain.handle('users:create', requireRole(['admin'], (u, data) => users.create(data)));
-  ipcMain.handle('users:update', requireRole(['admin'], (u, data) => users.update(data)));
-  ipcMain.handle('users:delete', requireRole(['admin'], (u, id) => users.remove(id, u.id)));
+module.exports = ({ ipcMain, requireAuth, requirePermission, getWindow }) => {
+  // ----- Users (manageUsers) -----
+  ipcMain.handle('users:list',   requirePermission('manageUsers', () => users.list()));
+  ipcMain.handle('users:create', requirePermission('manageUsers', (u, data) => users.create(data)));
+  ipcMain.handle('users:update', requirePermission('manageUsers', (u, data) => users.update(data)));
+  ipcMain.handle('users:delete', requirePermission('manageUsers', (u, id) => users.remove(id, u.id)));
   // Any authenticated user can update their own name
   ipcMain.handle('users:updateSelf', requireAuth((u, data) => users.updateSelf(u.id, data)));
 
@@ -53,7 +55,7 @@ module.exports = ({ ipcMain, requireAuth, requireRole, getWindow }) => {
   ipcMain.handle('reports:run', requireAuth((u, filters) => reports.runReport(filters || {}, u)));
   ipcMain.handle('reports:summary', requireAuth((u, filters) => reports.summary(filters || {}, u)));
 
-  ipcMain.handle('reports:exportExcel', requireAuth(async (u, filters) => {
+  ipcMain.handle('reports:exportExcel', requirePermission('exportReports', async (u, filters) => {
     const win = getWindow();
     const { canceled, filePath } = await dialog.showSaveDialog(win, {
       title: 'Save Report as Excel',
@@ -82,8 +84,8 @@ module.exports = ({ ipcMain, requireAuth, requireRole, getWindow }) => {
     return { ok: true, filePath: finalPath, rowCount };
   }));
 
-  // ----- Migration -----
-  ipcMain.handle('migrate:preview', requireRole(['admin'], async (u) => {
+  // ----- Migration (importData) -----
+  ipcMain.handle('migrate:preview', requirePermission('importData', async (u) => {
     const win = getWindow();
     const { canceled, filePaths } = await dialog.showOpenDialog(win, {
       title: 'Preview Excel Import (PMP Data Sheet)',
@@ -94,16 +96,16 @@ module.exports = ({ ipcMain, requireAuth, requireRole, getWindow }) => {
     return migrate.getPreview(filePaths[0]);
   }));
 
-  ipcMain.handle('migrate:confirm', requireRole(['admin'], (u, parsedData) => {
+  ipcMain.handle('migrate:confirm', requirePermission('importData', (u, parsedData) => {
     return migrate.commitImport(parsedData, u);
   }));
 
-  ipcMain.handle('migrate:cleanDuplicates', requireRole(['admin'], () => {
+  ipcMain.handle('migrate:cleanDuplicates', requirePermission('importData', () => {
     return migrate.cleanDuplicates();
   }));
 
-  // ----- System & Audit -----
-  ipcMain.handle('sys:auditLog', requireRole(['admin'], async () => {
+  // ----- System & Audit (manageSettings) -----
+  ipcMain.handle('sys:auditLog', requirePermission('manageSettings', async () => {
     return db.get().prepare(`
       SELECT a.ts, a.action, a.entity, a.level, a.details, u.username
       FROM audit_log a LEFT JOIN users u ON u.id = a.user_id
@@ -114,43 +116,39 @@ module.exports = ({ ipcMain, requireAuth, requireRole, getWindow }) => {
   ipcMain.handle('sys:userDataPath', async () => app.getPath('userData'));
   ipcMain.handle('sys:version', async () => app.getVersion());
 
+  // ----- Backups (manageSettings) -----
+  ipcMain.handle('sys:backupNow',  requirePermission('manageSettings', async () => backup.create('manual')));
+  ipcMain.handle('sys:backupList', requirePermission('manageSettings', async () => backup.list()));
+  ipcMain.handle('sys:backupRestore', requirePermission('manageSettings', async (u, name) => {
+    const res = await backup.restore(name);
+    // DB was re-initialised; bounce the window to login so the UI reloads clean.
+    const win = getWindow();
+    if (win) win.loadFile(path.join(__dirname, '../../renderer/login.html'));
+    return res;
+  }));
+
   // ----- LAN Server Control -----
   ipcMain.handle('sys:lanStatus', requireAuth(async () => {
-    const database = db.get();
-    const getSetting = (k, d) => {
-      const row = database.prepare('SELECT value FROM app_settings WHERE key = ?').get(k);
-      return row ? row.value : d;
-    };
     return {
       running: server.isRunning(),
-      enabled: getSetting('lan_enabled', '1') === '1',
-      port: Number(getSetting('lan_port', '3737')) || 3737,
+      enabled: settings.get('lan_enabled', '1') === '1',
+      port: Number(settings.get('lan_port', '3737')) || 3737,
       addresses: server.getLanAddresses()
     };
   }));
 
-  ipcMain.handle('sys:qrcode', requireRole(['admin'], async () => {
+  ipcMain.handle('sys:qrcode', requirePermission('manageSettings', async () => {
     const QRCode = require('qrcode');
     const addresses = server.getLanAddresses();
-    const database = db.get();
-    const getSetting = (k, d) => {
-      const row = database.prepare('SELECT value FROM app_settings WHERE key = ?').get(k);
-      return row ? row.value : d;
-    };
-    const port = Number(getSetting('lan_port', '3737')) || 3737;
+    const port = Number(settings.get('lan_port', '3737')) || 3737;
     const url = addresses.length ? `http://${addresses[0]}:${port}` : `http://localhost:${port}`;
     const dataUrl = await QRCode.toDataURL(url, { width: 280, margin: 2, errorCorrectionLevel: 'M' });
     return { ok: true, dataUrl, url };
   }));
 
-  ipcMain.handle('sys:lanToggle', requireRole(['admin'], async (u, { enabled, port }) => {
-    const database = db.get();
-    const set = (k, v) => database.prepare(
-      'INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)'
-    ).run(k, String(v));
-
-    if (port) set('lan_port', Number(port));
-    set('lan_enabled', enabled ? 1 : 0);
+  ipcMain.handle('sys:lanToggle', requirePermission('manageSettings', async (u, { enabled, port }) => {
+    if (port) settings.set('lan_port', Number(port));
+    settings.set('lan_enabled', enabled ? 1 : 0);
 
     if (server.isRunning()) await server.stop();
     if (enabled) {
@@ -159,34 +157,7 @@ module.exports = ({ ipcMain, requireAuth, requireRole, getWindow }) => {
     return { running: server.isRunning(), enabled: !!enabled, port: Number(port) || 3737, addresses: server.getLanAddresses() };
   }));
 
-  // ----- Company Settings -----
-  ipcMain.handle('settings:getCompany', requireRole(['admin'], () => {
-    const database = db.get();
-    const getSetting = (k, d) => {
-      const row = database.prepare('SELECT value FROM app_settings WHERE key = ?').get(k);
-      return row ? row.value : d;
-    };
-    return {
-      company_name:      getSetting('company_name',      'PMP Media Productions'),
-      department_name:   getSetting('department_name',   'Production Department'),
-      company_address:   getSetting('company_address',   ''),
-      company_phone:     getSetting('company_phone',     ''),
-      company_email:     getSetting('company_email',     ''),
-      manager_name:      getSetting('manager_name',      ''),
-      manager_title:     getSetting('manager_title',     'General Manager'),
-      company_logo_path: getSetting('company_logo_path', '')
-    };
-  }));
-
-  ipcMain.handle('settings:saveCompany', requireRole(['admin'], (u, data) => {
-    const database = db.get();
-    const set = (k, v) => database.prepare(
-      'INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)'
-    ).run(k, String(v == null ? '' : v));
-    ['company_name','department_name','company_address','company_phone','company_email',
-     'manager_name','manager_title','company_logo_path'].forEach(k => {
-      if (Object.prototype.hasOwnProperty.call(data, k)) set(k, data[k]);
-    });
-    return { ok: true };
-  }));
+  // ----- Company Settings (manageSettings) -----
+  ipcMain.handle('settings:getCompany', requirePermission('manageSettings', () => settings.getCompany()));
+  ipcMain.handle('settings:saveCompany', requirePermission('manageSettings', (u, data) => settings.saveCompany(data)));
 };
