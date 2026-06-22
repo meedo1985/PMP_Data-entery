@@ -80,7 +80,11 @@ function createApp() {
         imgSrc: ["'self'", 'data:'],
         connectSrc: ["'self'"],
         objectSrc: ["'none'"],
-        baseUri: ["'self'"]
+        baseUri: ["'self'"],
+        // The LAN server runs over plain HTTP; without this, helmet's default
+        // upgrade-insecure-requests would force browsers to fetch CSS/JS/API over
+        // https (which we don't serve), breaking browser-mode pages.
+        upgradeInsecureRequests: null
       }
     },
     hsts: false,
