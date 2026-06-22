@@ -14,3 +14,4 @@ Thumbs.db
 .claude/settings.local.json
 *.log
 npm-debug.log*
+boot.err
