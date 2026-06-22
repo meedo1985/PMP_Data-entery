@@ -337,7 +337,9 @@ window.initChrome = async function ({ page, title, search, back = true } = {}) {
     if (btnBack) btnBack.addEventListener('click', () => window.pmp.nav.goto('dashboard'));
   }
 
-  await initPageNav(page);
+  // While a password change is owed, every data API is blocked — don't show the
+  // nav so the user can only use the change-password form on the settings page.
+  if (!user.must_change_pwd) await initPageNav(page);
   return user;
 };
 
