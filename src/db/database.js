@@ -4,14 +4,29 @@ const fs = require("fs");
 const path = require("path");
 let _db = null;
 
+// Bump this whenever schema.sql, a migrate_*.sql, or an ad-hoc column-add below
+// changes. The DB header stores the version it was last initialized at; if it
+// matches, init() skips all the DDL/migration/healing work on the next launch.
+const SCHEMA_VERSION = 7;
+
 function init() {
   if (_db) return _db;
   const { db: dbPath, schema: schemaPath } = global.PMP_PATHS;
-  
-  _db = new Database(dbPath, { 
+
+  _db = new Database(dbPath, {
     verbose: null,
     timeout: 5000 // Prevents "database is locked" errors
   });
+
+  // Fast path: DB already at the current schema version → just set the
+  // per-connection pragma and return, skipping the full init below.
+  // ponytail: user_version gate. A version-matched DB also skips the self-healing
+  // (corrupt-table rebuild, recovery renames); bump SCHEMA_VERSION to force a full run.
+  _db.pragma("journal_mode = WAL");
+  if (_db.pragma("user_version", { simple: true }) === SCHEMA_VERSION) {
+    _db.pragma("foreign_keys = ON");
+    return _db;
+  }
 
   // FK enforcement is intentionally OFF for the entire init() run. Several migration
   // scripts temporarily enable it for their own integrity checks and then leave it ON.
@@ -189,6 +204,9 @@ function init() {
   const finalCount = _db.prepare("SELECT COUNT(*) AS c FROM orders").get().c;
   const viewCount = _db.prepare("SELECT COUNT(*) AS c FROM v_orders_full").get().c;
   console.log(`[DB] Startup complete. Total records found in 'orders' table: ${finalCount}, 'v_orders_full' view: ${viewCount}`);
+
+  // Stamp the version so the next launch can take the fast path above.
+  _db.pragma(`user_version = ${SCHEMA_VERSION}`);
 
   return _db;
 }

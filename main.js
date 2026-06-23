@@ -108,13 +108,17 @@ function createMainWindow() {
   });
 
   Menu.setApplicationMenu(null);
-  mainWindow.once('ready-to-show', () => mainWindow.show());
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+    console.log('[perf] window visible at +' + (Date.now() - global.__PMP_T0) + 'ms');
+  });
   mainWindow.loadFile(path.join(__dirname, 'src', 'renderer', 'login.html'));
 
   if (isDev) mainWindow.webContents.openDevTools({ mode: 'detach' });
 }
 
 // ---------- App lifecycle ----------
+global.__PMP_T0 = Date.now();
 app.whenReady().then(async () => {
   try {
     // Set App User Model ID for Windows Taskbar icons to display correctly
@@ -151,6 +155,12 @@ app.whenReady().then(async () => {
       console.log('Migration result:', result);
     }
 
+    // Initialize IPC Handlers, then show the window immediately. The login screen
+    // only needs the DB + IPC; the LAN server and backup are not on this path.
+    ipcRegistry.init(ipcMain, session, () => mainWindow);
+    createMainWindow();
+
+    // Background work — runs after the window is up so it doesn't delay first paint.
     // Daily DB backup: make one now if today's is missing, then re-check every 12h
     // so an app left open across midnight still gets its daily snapshot.
     backup.dailyIfNeeded().catch(e => console.error('[backup] daily failed:', e.message));
@@ -158,13 +168,8 @@ app.whenReady().then(async () => {
       backup.dailyIfNeeded().catch(e => console.error('[backup] daily failed:', e.message));
     }, 12 * 60 * 60 * 1000).unref();
 
-    // Start LAN server (if enabled in app_settings)
-    await startLanServerIfEnabled();
-
-    // Initialize IPC Handlers
-    ipcRegistry.init(ipcMain, session, () => mainWindow);
-
-    createMainWindow();
+    // Start LAN server (if enabled). Not awaited — startup no longer blocks on it.
+    startLanServerIfEnabled().catch(e => console.error('[main] LAN start failed:', e.message));
   } catch (err) {
     dialog.showErrorBox('Startup error', String(err && err.stack || err));
     app.quit();
